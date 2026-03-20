@@ -1,28 +1,22 @@
-# Food Roulette App
+# 오늘 뭐 먹지? (Food Roulette App)
 
-## Overview
-A simple web application to randomly select a food item using a roulette-style interaction.
+## 개요
+결정 장애를 겪는 사용자들을 위해 오늘 먹을 음식을 랜덤하게 골라주는 웹 애플리케이션입니다. 룰렛 방식을 사용하여 재미 요소를 더했습니다.
 
-## Current State & Outline
-- **Version 1.0 (Initial):**
-  - **Features:** 
-    - Food roulette wheel using HTML Canvas.
-    - Spin button to trigger random selection.
-    - Result display area.
-  - **Design/Style:** 
-    - Clean, modern, responsive interface.
-    - Smooth cubic-bezier spinning animation effect.
-    - Vibrant colors for wheel segments.
-  - **Deployment:**
-    - Platform: Cloudflare Pages
-    - Source: GitHub Repository (https://github.com/borntobuildjigun/Anabolic-Table.git)
-    - Build Settings:
-      - Build command: (None)
-      - Build output directory: / (Root)
+## 주요 기능 및 특징
+- **Web Components 기반:** `<food-roulette>` 커스텀 엘리먼트를 사용한 캡슐화된 구조.
+- **다양한 음식 리스트:** 한식, 일식, 양식 등 16가지 이상의 다양한 메뉴 구성.
+- **Canvas 룰렛:** HTML5 Canvas를 이용한 부드러운 회전 애니메이션.
+- **모던 디자인:** Pretendard 폰트와 파스텔 톤의 세련된 UI/UX.
+- **반응형 웹:** 모바일과 데스크탑 환경 모두 최적화된 레이아웃.
 
-## Current Plan
-- [x] Create blueprint.md.
-- [x] Implement HTML structure in `index.html`.
-- [x] Implement CSS styling in `style.css`.
-- [x] Implement JS logic in `main.js`.
-- [ ] Connect GitHub repository to Cloudflare Pages for automatic deployment.
+## 기술 스택
+- **HTML5:** Web Components (Shadow DOM, Custom Elements)
+- **CSS3:** Flexbox, Grid, CSS Variables, Animations
+- **JavaScript:** ES Modules, Canvas API, Async/Await
+
+## 향후 계획
+- [x] Web Component 기반 리팩토링 및 디자인 고도화.
+- [x] 한국어 음식 리스트 추가 및 폰트 설정.
+- [ ] 사용자 정의 음식 리스트 추가 기능.
+- [ ] 카테고리별(한식/중식/일식 등) 필터링 기능.
