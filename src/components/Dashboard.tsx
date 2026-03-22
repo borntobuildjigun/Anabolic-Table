@@ -2,13 +2,13 @@ import React, { useContext, useMemo } from 'react';
 import { AppContext } from '../App';
 import { calculateMacros, calculateWaterIntake } from '../utils/calculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Droplets } from 'lucide-react';
+import { Droplets, ArrowLeft } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
 
-  const { userData } = context;
+  const { userData, setStep } = context;
   const macros = useMemo(() => calculateMacros(userData), [userData]);
   const waterIntake = useMemo(() => calculateWaterIntake(userData.weight), [userData.weight]);
 
@@ -19,7 +19,24 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div style={{ animation: 'fadeIn 0.5s ease' }}>
+      <button 
+        onClick={() => setStep(1)}
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.5rem', 
+          background: 'none', 
+          color: 'var(--accent-primary)', 
+          fontWeight: 'bold',
+          marginBottom: '1.5rem',
+          padding: '0.5rem 0',
+          cursor: 'pointer'
+        }}
+      >
+        <ArrowLeft size={18} /> 처음부터 다시 설정하기
+      </button>
+
       <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem' }}>
         매크로 분석 대시보드
       </h2>

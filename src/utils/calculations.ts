@@ -33,7 +33,9 @@ const DEFAULT_BACKUP = {
 export const calculateMacros = (userData: UserData): Macros => {
   if (!userData) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
   
-  const { weight = 0, height = 0, age = 0, gender = 'MALE', goal = 'BULK', activityLevel = 1.2 } = userData;
+  const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE', goal = 'BULK', activityLevel = 1.2 } = userData;
+  const age = 2026 - birthYear; // 2026년 기준 계산
+  
   let bmr = 10 * weight + 6.25 * height - 5 * age;
   if (gender === 'MALE') bmr += 5;
   else bmr -= 161;

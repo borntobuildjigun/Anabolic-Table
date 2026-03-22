@@ -11,7 +11,7 @@ export interface UserData {
   weight: number;
   targetWeight: number;
   height: number;
-  age: number;
+  birthYear: number;
   gender: 'MALE' | 'FEMALE';
   bodyFat: number;
   goal: UserGoal;
@@ -41,7 +41,7 @@ const INITIAL_DATA: UserData = {
   weight: 70,
   targetWeight: 75,
   height: 175,
-  age: 25,
+  birthYear: 1995,
   gender: 'MALE',
   bodyFat: 15,
   goal: 'BULK',

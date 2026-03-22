@@ -7,12 +7,29 @@ const Onboarding: React.FC = () => {
 
   const { userData, setUserData, setStep } = context;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    // 소수점 첫째 자리까지만 허용하는 정규식
+    if (name === 'weight' || name === 'targetWeight') {
+      if (value !== '' && !/^\d*\.?\d{0,1}$/.test(value)) return;
+    }
+
+    const numValue = value === '' ? 0 : Number(value);
+    
     setUserData({
       ...userData,
-      [name]: name === 'gender' ? value : Number(value)
+      [name]: numValue
     });
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    // 비어있을 경우 기본값 강제 할당
+    if (value === '' || Number(value) === 0) {
+      const defaults: Record<string, number> = { weight: 70, targetWeight: 70, height: 175, birthYear: 1995, bodyFat: 15 };
+      setUserData({ ...userData, [name]: defaults[name] });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -21,7 +38,7 @@ const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ animation: 'fadeIn 0.5s ease' }}>
       <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem' }}>
         신체 데이터 입력
       </h2>
@@ -31,7 +48,7 @@ const Onboarding: React.FC = () => {
           <select 
             name="gender" 
             value={userData.gender} 
-            onChange={handleChange}
+            onChange={(e) => setUserData({ ...userData, gender: e.target.value as any })}
             style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
           >
             <option value="MALE">남성 (Male)</option>
@@ -44,10 +61,13 @@ const Onboarding: React.FC = () => {
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>현재 체중 (kg)</label>
             <input 
               type="number" 
+              inputMode="decimal"
+              step="0.1"
               name="weight" 
-              value={userData.weight} 
-              onChange={handleChange}
-              placeholder="80"
+              value={userData.weight || ''} 
+              onChange={handleNumberChange}
+              onBlur={handleBlur}
+              placeholder="70.0"
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
             />
           </div>
@@ -55,10 +75,13 @@ const Onboarding: React.FC = () => {
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>목표 체중 (kg)</label>
             <input 
               type="number" 
+              inputMode="decimal"
+              step="0.1"
               name="targetWeight" 
-              value={userData.targetWeight} 
-              onChange={handleChange}
-              placeholder="85"
+              value={userData.targetWeight || ''} 
+              onChange={handleNumberChange}
+              onBlur={handleBlur}
+              placeholder="75.0"
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
             />
           </div>
@@ -69,23 +92,29 @@ const Onboarding: React.FC = () => {
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>신장 (cm)</label>
             <input 
               type="number" 
+              inputMode="numeric"
               name="height" 
-              value={userData.height} 
-              onChange={handleChange}
-              placeholder="180"
+              value={userData.height || ''} 
+              onChange={handleNumberChange}
+              onBlur={handleBlur}
+              placeholder="175"
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
             />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>나이</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>출생년도 (4자리)</label>
             <input 
               type="number" 
-              name="age" 
-              value={userData.age} 
-              onChange={handleChange}
-              placeholder="30"
+              inputMode="numeric"
+              name="birthYear" 
+              value={userData.birthYear || ''} 
+              onChange={handleNumberChange}
+              onBlur={handleBlur}
+              placeholder="1995"
+              maxLength={4}
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
             />
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>* 만 나이로 자동 계산됩니다 (2026 기준)</p>
           </div>
         </div>
 
@@ -93,9 +122,11 @@ const Onboarding: React.FC = () => {
           <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>체지방률 (%)</label>
           <input 
             type="number" 
+            inputMode="numeric"
             name="bodyFat" 
-            value={userData.bodyFat} 
-            onChange={handleChange}
+            value={userData.bodyFat || ''} 
+            onChange={handleNumberChange}
+            onBlur={handleBlur}
             placeholder="15"
             style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
           />
