@@ -34,7 +34,7 @@ export const calculateMacros = (userData: UserData): Macros => {
   if (!userData) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
   
   const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE', goal = 'BULK', activityLevel = 1.2 } = userData;
-  const age = 2026 - birthYear; // 2026년 기준 계산
+  const age = 2026 - birthYear;
   
   let bmr = 10 * weight + 6.25 * height - 5 * age;
   if (gender === 'MALE') bmr += 5;
@@ -64,32 +64,41 @@ export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
   if (!userData) return [];
   
   const dailyTotal = calculateMacros(userData);
-  const { mealCount = 3, workoutTime = "14:00", selectedIngredients = { carbs: [], protein: [], fats: [] }, isReadyMealMode = false } = userData;
+  const { mealCount = 3, workoutTime = "14:00", isRestDay = false, selectedIngredients = { carbs: [], protein: [], fats: [] }, isReadyMealMode = false } = userData;
   
   const pPerMeal = Math.round(dailyTotal.protein / (mealCount || 1));
   const fPerMeal = Math.round(dailyTotal.fat / (mealCount || 1));
   
-  // workoutTime 안전하게 처리
-  const timeParts = workoutTime?.split(':') || ["14", "00"];
-  const wHour = Number(timeParts[0] || 14);
-  
-  const mealIndices = Array.from({ length: mealCount }, (_, i) => 8 + i * 4);
-  const diffs = mealIndices.map(time => Math.abs(time - wHour));
-  const sorted = [...Array(mealCount).keys()].sort((a, b) => diffs[a] - diffs[b]);
-  const fuelIndices = sorted.slice(0, 2);
+  let fuelIndices: number[] = [];
+  let fuelCPerMeal = 0;
+  let otherCPerMeal = 0;
 
-  const fuelCarbsTotal = dailyTotal.carbs * 0.65;
-  const otherCarbsTotal = dailyTotal.carbs - fuelCarbsTotal;
-  const fuelCPerMeal = Math.round(fuelCarbsTotal / 2);
-  const otherCPerMeal = Math.round(otherCarbsTotal / Math.max(1, mealCount - 2));
+  if (isRestDay) {
+    // 1/N 균등 배분 로직
+    fuelCPerMeal = Math.round(dailyTotal.carbs / mealCount);
+    otherCPerMeal = fuelCPerMeal;
+  } else {
+    // 운동 시간 기반 전략적 배분 로직
+    const timeParts = workoutTime?.split(':') || ["14", "00"];
+    const wHour = Number(timeParts[0] || 14);
+    const mealIndices = Array.from({ length: mealCount }, (_, i) => 8 + i * 4);
+    const diffs = mealIndices.map(time => Math.abs(time - wHour));
+    const sorted = [...Array(mealCount).keys()].sort((a, b) => diffs[a] - diffs[b]);
+    fuelIndices = sorted.slice(0, 2);
+
+    const fuelCarbsTotal = dailyTotal.carbs * 0.65;
+    const otherCarbsTotal = dailyTotal.carbs - fuelCarbsTotal;
+    fuelCPerMeal = Math.round(fuelCarbsTotal / 2);
+    otherCPerMeal = Math.round(otherCarbsTotal / Math.max(1, mealCount - 2));
+  }
 
   const cName = selectedIngredients?.carbs?.[0] || DEFAULT_BACKUP.carbs;
   const pName = selectedIngredients?.protein?.[0] || DEFAULT_BACKUP.protein;
   const fName = selectedIngredients?.fats?.[0] || DEFAULT_BACKUP.fats;
 
   return Array.from({ length: mealCount }, (_, i) => {
-    const isFuel = fuelIndices.includes(i);
-    const targetC = isFuel ? fuelCPerMeal : otherCPerMeal;
+    const isFuel = !isRestDay && fuelIndices.includes(i);
+    const targetC = isFuel || isRestDay ? (isRestDay ? Math.round(dailyTotal.carbs / mealCount) : fuelCPerMeal) : otherCPerMeal;
     const targetP = pPerMeal;
     const targetF = fPerMeal;
 

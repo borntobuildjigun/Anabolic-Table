@@ -17,6 +17,7 @@ export interface UserData {
   goal: UserGoal;
   activityLevel: number;
   workoutTime: string;
+  isRestDay: boolean;
   isReadyMealMode: boolean;
   selectedIngredients: {
     carbs: string[];
@@ -47,6 +48,7 @@ const INITIAL_DATA: UserData = {
   goal: 'BULK',
   activityLevel: 1.55,
   workoutTime: '14:00',
+  isRestDay: false,
   isReadyMealMode: false,
   selectedIngredients: {
     carbs: ['현미밥'],
