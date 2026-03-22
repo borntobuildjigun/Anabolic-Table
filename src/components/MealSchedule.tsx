@@ -1,7 +1,7 @@
-import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useContext, useMemo, useState, useEffect } from 'react';
 import { AppContext } from '../App';
 import { generateOptimizedMealPlan, calculateMacros, getAIRecommendation } from '../utils/calculations';
-import { CheckCircle2, Circle, Lightbulb, Zap, Package, Copy, Clock, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, Lightbulb, Zap, Package, Clock, Loader2, AlertCircle } from 'lucide-react';
 
 const MealSchedule: React.FC = () => {
   const context = useContext(AppContext);
@@ -10,12 +10,29 @@ const MealSchedule: React.FC = () => {
   if (!context) return null;
   const { userData, setUserData } = context;
 
-  // 계산 로직은 항상 최신 userData를 바탕으로 수행
-  const mealPlan = useMemo(() => generateOptimizedMealPlan(userData), [userData]);
-  const totalMacros = useMemo(() => calculateMacros(userData), [userData]);
-  const recommendations = useMemo(() => getAIRecommendation(totalMacros, userData), [totalMacros, userData]);
+  // 1. 방어적 연산 및 초기값 설정
+  const mealPlan = useMemo(() => {
+    if (!userData || !userData.workoutTime) return [];
+    try {
+      return generateOptimizedMealPlan(userData);
+    } catch (e) {
+      console.error("Meal Generation Error:", e);
+      return [];
+    }
+  }, [userData]);
+
+  const totalMacros = useMemo(() => {
+    if (!userData) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    return calculateMacros(userData);
+  }, [userData]);
+
+  const recommendations = useMemo(() => {
+    if (!totalMacros || !userData) return [];
+    return getAIRecommendation(totalMacros, userData);
+  }, [totalMacros, userData]);
 
   const toggleMealStatus = (index: number) => {
+    if (!userData?.mealsStatus) return;
     const newStatus = [...userData.mealsStatus];
     newStatus[index] = !newStatus[index];
     setUserData({ ...userData, mealsStatus: newStatus });
@@ -23,7 +40,6 @@ const MealSchedule: React.FC = () => {
 
   const handleModeChange = (isReady: boolean) => {
     setIsProcessing(true);
-    // 비동기 처리로 UI 업데이트 시간을 벌어줌
     setTimeout(() => {
       setUserData(prev => ({ ...prev, isReadyMealMode: isReady }));
       setIsProcessing(false);
@@ -42,13 +58,23 @@ const MealSchedule: React.FC = () => {
     }, 100);
   };
 
+  // 데이터 부족 시 안내 UI
+  if (!userData?.workoutTime) {
+    return (
+      <div className="card" style={{ marginTop: '2rem', textAlign: 'center', padding: '2rem' }}>
+        <AlertCircle size={48} color="var(--accent-secondary)" style={{ marginBottom: '1rem' }} />
+        <p style={{ color: 'var(--text-secondary)' }}>사용자 데이터를 불러오는 중이거나 데이터가 부족합니다.</p>
+        <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', color: 'var(--accent-primary)', textDecoration: 'underline' }}>새로고침</button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ marginTop: '2rem' }}>
       <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem' }}>
         전문가용 식단표
       </h2>
 
-      {/* 운동 시간 설정 */}
       <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
           <Clock size={20} />
@@ -56,13 +82,12 @@ const MealSchedule: React.FC = () => {
         </div>
         <input 
           type="time" 
-          value={userData.workoutTime}
+          value={userData.workoutTime || "14:00"}
           onChange={(e) => setUserData({ ...userData, workoutTime: e.target.value })}
           style={{ background: 'var(--bg-tertiary)', color: 'white', border: '1px solid var(--border-color)', padding: '0.5rem', borderRadius: '8px' }}
         />
       </div>
 
-      {/* 모드 전환 */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
         <button 
           onClick={() => handleModeChange(false)}
@@ -89,7 +114,6 @@ const MealSchedule: React.FC = () => {
         </button>
       </div>
 
-      {/* 식사 횟수 선택 */}
       <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
         {[3, 4, 5].map(count => (
           <button 
@@ -115,25 +139,25 @@ const MealSchedule: React.FC = () => {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {mealPlan.map((meal) => {
-              const isDone = userData.mealsStatus[meal.id];
+            {mealPlan && mealPlan.length > 0 ? mealPlan.map((meal) => {
+              const isDone = userData.mealsStatus?.[meal.id] || false;
               return (
-                <div key={meal.id} className="card" style={{ opacity: isDone ? 0.4 : 1, border: isDone ? '1px solid var(--border-color)' : meal.macros.isWorkoutFuel ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)', background: isDone ? 'var(--bg-primary)' : 'var(--bg-secondary)', position: 'relative' }}>
-                  {meal.macros.isWorkoutFuel && (
+                <div key={meal.id} className="card" style={{ opacity: isDone ? 0.4 : 1, border: isDone ? '1px solid var(--border-color)' : meal.macros?.isWorkoutFuel ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)', background: isDone ? 'var(--bg-primary)' : 'var(--bg-secondary)', position: 'relative' }}>
+                  {meal.macros?.isWorkoutFuel && (
                     <div style={{ position: 'absolute', top: '-12px', left: '20px', background: 'var(--accent-primary)', color: 'black', padding: '2px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Zap size={12} fill="black" /> WORKOUT FUEL
                     </div>
                   )}
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: meal.macros.isWorkoutFuel ? 'var(--accent-primary)' : 'white' }}>{meal.mealName}</h3>
+                    <h3 style={{ fontSize: '1.1rem', color: meal.macros?.isWorkoutFuel ? 'var(--accent-primary)' : 'white' }}>{meal.mealName}</h3>
                     <button onClick={() => toggleMealStatus(meal.id)} style={{ background: 'none', color: isDone ? 'var(--success)' : 'var(--text-muted)' }}>
                       {isDone ? <CheckCircle2 size={28} color="#00ff88" /> : <Circle size={28} />}
                     </button>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {meal.foods.map((food, idx) => (
+                    {meal.foods?.map((food, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ 
                           background: idx === 0 ? 'var(--accent-primary)' : idx === 1 ? '#00ccff' : 'var(--accent-secondary)', 
@@ -147,7 +171,9 @@ const MealSchedule: React.FC = () => {
                   </div>
                 </div>
               );
-            })}
+            }) : (
+              <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>식단 데이터를 생성할 수 없습니다.</p>
+            )}
           </div>
         )}
       </div>
