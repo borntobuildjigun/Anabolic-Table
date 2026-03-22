@@ -16,6 +16,8 @@ export interface UserData {
   bodyFat: number;
   goal: UserGoal;
   activityLevel: number;
+  workoutTime: string;
+  isReadyMealMode: boolean;
   selectedIngredients: {
     carbs: string[];
     protein: string[];
@@ -43,10 +45,12 @@ const INITIAL_DATA: UserData = {
   bodyFat: 15,
   goal: 'BULK',
   activityLevel: 1.55,
+  workoutTime: '14:00',
+  isReadyMealMode: false,
   selectedIngredients: {
-    carbs: ['고구마', '현미밥'],
-    protein: ['닭가슴살', '소고기(우둔살)'],
-    fats: ['아몬드', '아보카도'],
+    carbs: ['현미밥'],
+    protein: ['닭가슴살'],
+    fats: ['아몬드'],
   },
   mealCount: 4,
   mealsStatus: [false, false, false, false],

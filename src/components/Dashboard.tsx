@@ -1,7 +1,8 @@
 import React, { useContext, useMemo } from 'react';
 import { AppContext } from '../App';
-import { calculateMacros } from '../utils/calculations';
+import { calculateMacros, calculateWaterIntake } from '../utils/calculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Droplets } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const context = useContext(AppContext);
@@ -9,6 +10,7 @@ const Dashboard: React.FC = () => {
 
   const { userData } = context;
   const macros = useMemo(() => calculateMacros(userData), [userData]);
+  const waterIntake = useMemo(() => calculateWaterIntake(userData.weight), [userData.weight]);
 
   const chartData = [
     { name: '탄수화물', value: macros.carbs * 4, color: 'var(--accent-primary)', grams: macros.carbs },
@@ -84,6 +86,25 @@ const Dashboard: React.FC = () => {
               : '린매스업은 정교한 칼로리 조절이 필요합니다. 체중 변화를 주 단위로 모니터링하며 섭취량을 미세 조정하세요.'
           }
         </p>
+      </div>
+
+      {/* 수분 섭취 가이드 */}
+      <div className="card" style={{ 
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #0a192f 100%)',
+        border: '1px solid #00aaff',
+        marginTop: '1rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ background: 'rgba(0, 170, 255, 0.1)', padding: '1rem', borderRadius: '12px' }}>
+            <Droplets color="#00aaff" size={32} />
+          </div>
+          <div>
+            <p style={{ color: '#00aaff', fontSize: '0.875rem', fontWeight: 'bold' }}>오늘의 권장 수분량</p>
+            <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'white' }}>
+              {waterIntake.toFixed(1)}<span style={{ fontSize: '1.25rem', marginLeft: '0.25rem' }}>L</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
