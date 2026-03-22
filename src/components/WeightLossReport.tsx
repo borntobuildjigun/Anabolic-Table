@@ -57,7 +57,7 @@ const WeightLossReport: React.FC = () => {
         <div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>목표 체중 달성까지</p>
           <div style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--accent-primary)' }}>
-            약 {report.daysToTarget}일 소요 예상
+            약 {report.weeksToTarget}주 소요 예상
           </div>
         </div>
       </div>

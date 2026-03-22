@@ -13,8 +13,9 @@ export interface WeightLossReportData {
   dailyDeficit: number;
   dailyLossG: number;
   weeklyLossKg: number;
-  daysToTarget: number;
+  weeksToTarget: number;
   isWarning: boolean;
+  isIdeal: boolean;
   warningMsg: string;
 }
 
@@ -39,26 +40,43 @@ const DEFAULT_BACKUP = {
   fats: '아몬드'
 };
 
-export const getTDEE = (userData: UserData): number => {
+export const getBMR = (userData: UserData): number => {
   if (!userData) return 0;
-  const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE', activityLevel = 1.2 } = userData;
+  const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE' } = userData;
   const age = 2026 - birthYear;
   let bmr = 10 * weight + 6.25 * height - 5 * age;
-  if (gender === 'MALE') bmr += 5;
-  else bmr -= 161;
-  return bmr * activityLevel;
+  return gender === 'MALE' ? bmr + 5 : bmr - 161;
+};
+
+export const getTDEE = (userData: UserData): number => {
+  const bmr = getBMR(userData);
+  return bmr * (userData.activityLevel || 1.2);
 };
 
 export const calculateMacros = (userData: UserData): Macros => {
   const tdee = getTDEE(userData);
-  const { weight = 0, goal = 'BULK' } = userData;
+  const bmr = getBMR(userData);
+  const { weight = 0, targetWeight = 0, targetWeeks = 8, goal = 'BULK' } = userData;
+  
   let targetCalories = tdee;
+
+  if (goal === 'BULK') {
+    targetCalories += 400;
+  } else if (goal === 'LEAN') {
+    targetCalories += 200;
+  } else if (goal === 'CUT') {
+    // 과학적 결손 계산: (감량 kg * 7700) / (주 * 7일)
+    const weightToLose = Math.max(0, weight - targetWeight);
+    const totalDeficitKcal = weightToLose * 7700;
+    const dailyDeficitNeeded = totalDeficitKcal / (targetWeeks * 7);
+    
+    targetCalories = tdee - dailyDeficitNeeded;
+    
+    // 안전 장치: BMR 이하로는 떨어지지 않게 설정
+    if (targetCalories < bmr) targetCalories = bmr;
+  }
+
   const proteinG = weight * 2.0;
-
-  if (goal === 'BULK') targetCalories += 400;
-  else if (goal === 'LEAN') targetCalories += 200;
-  else if (goal === 'CUT') targetCalories -= 500;
-
   const proteinKcal = proteinG * 4;
   let fatKcal = Math.max(0, targetCalories * 0.22);
   let carbKcal = Math.max(0, targetCalories - proteinKcal - fatKcal);
@@ -66,7 +84,7 @@ export const calculateMacros = (userData: UserData): Macros => {
   return {
     calories: Math.round(targetCalories),
     protein: Math.round(proteinG),
-    carbs: Math.round(carbKcal / 4),
+    carbs: Math.max(0, Math.round(carbKcal / 4)),
     fat: Math.round(fatKcal / 9),
   };
 };
@@ -76,30 +94,36 @@ export const calculateWeightLossReport = (userData: UserData): WeightLossReportD
   const macros = calculateMacros(userData);
   const deficit = tdee - macros.calories;
   
-  // 체지방 1kg = 7,700kcal
   const dailyLossG = (deficit / 7700) * 1000;
   const weeklyLossKg = (dailyLossG * 7) / 1000;
   
   const weightToLose = userData.weight - userData.targetWeight;
-  const daysToTarget = dailyLossG > 0 ? Math.ceil((weightToLose * 1000) / dailyLossG) : 0;
+  const weeksToTarget = dailyLossG > 0 ? (weightToLose * 1000) / (dailyLossG * 7) : 0;
 
   let isWarning = false;
+  let isIdeal = false;
   let warningMsg = "";
 
-  if (weeklyLossKg > userData.weight * 0.01) {
+  const weeklyLossPercent = (weeklyLossKg / userData.weight) * 100;
+
+  if (weeklyLossPercent > 1.5) {
     isWarning = true;
-    warningMsg = "감량 속도가 너무 빠릅니다. 근손실 위험이 있으니 식단량을 조금 늘리는 것을 추천합니다.";
+    warningMsg = "⚠️ 경고: 감량 속도가 너무 빠릅니다! 근손실과 호르몬 수치 저하 위험이 있습니다. 기간을 더 길게 잡거나 식단량을 늘리세요.";
+  } else if (weeklyLossPercent >= 0.5 && weeklyLossPercent <= 1.0) {
+    isIdeal = true;
+    warningMsg = "✨ 이상적인 감량 속도입니다. 근육을 지키며 다이어트하기 최적의 상태입니다.";
   } else if (deficit <= 0 && userData.goal === 'CUT') {
     isWarning = true;
-    warningMsg = "현재 칼로리 설정으로는 감량이 어려울 수 있습니다. 활동량을 늘리거나 목표를 조정하세요.";
+    warningMsg = "목표 기간 내 달성이 어려울 수 있습니다. 활동량을 늘리거나 기간을 조정하세요.";
   }
 
   return {
     dailyDeficit: Math.round(deficit),
     dailyLossG: Math.round(dailyLossG),
     weeklyLossKg: Number(weeklyLossKg.toFixed(2)),
-    daysToTarget: Math.max(0, daysToTarget),
+    weeksToTarget: Math.ceil(weeksToTarget),
     isWarning,
+    isIdeal,
     warningMsg
   };
 };
@@ -111,9 +135,9 @@ export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
   const pPerMeal = Math.round(dailyTotal.protein / (mealCount || 1));
   const fPerMeal = Math.round(dailyTotal.fat / (mealCount || 1));
   
-  let fuelIndices: number[] = [];
   let fuelCPerMeal = 0;
   let otherCPerMeal = 0;
+  let fuelIndices: number[] = [];
 
   if (isRestDay) {
     fuelCPerMeal = Math.round(dailyTotal.carbs / mealCount);
@@ -137,7 +161,7 @@ export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
 
   return Array.from({ length: mealCount }, (_, i) => {
     const isFuel = !isRestDay && fuelIndices.includes(i);
-    const targetC = isFuel || isRestDay ? (isRestDay ? Math.round(dailyTotal.carbs / mealCount) : fuelCPerMeal) : otherCPerMeal;
+    const targetC = isFuel ? fuelCPerMeal : (isRestDay ? Math.round(dailyTotal.carbs / mealCount) : otherCPerMeal);
     const targetP = pPerMeal;
     const targetF = fPerMeal;
 

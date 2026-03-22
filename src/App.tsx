@@ -20,6 +20,7 @@ export interface UserData {
   workoutTime: string;
   isRestDay: boolean;
   isReadyMealMode: boolean;
+  targetWeeks: number; // 추가: 목표 감량 기간(주)
   selectedIngredients: {
     carbs: string[];
     protein: string[];
@@ -38,19 +39,19 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// 완벽한 기본 데이터 세트 (70kg 남성 기준)
 const INITIAL_DATA: UserData = {
   weight: 70,
-  targetWeight: 75,
+  targetWeight: 65,
   height: 175,
   birthYear: 1995,
   gender: 'MALE',
   bodyFat: 15,
-  goal: 'BULK',
+  goal: 'CUT',
   activityLevel: 1.55,
   workoutTime: '14:00',
   isRestDay: false,
   isReadyMealMode: false,
+  targetWeeks: 8, // 기본 8주
   selectedIngredients: {
     carbs: ['현미밥'],
     protein: ['닭가슴살'],
@@ -66,7 +67,6 @@ const App: React.FC = () => {
       const saved = localStorage.getItem('anabolic_user_data');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // 저장된 데이터가 있더라도 필수 필드가 누락되었을 경우 초기값과 합성
         return { ...INITIAL_DATA, ...parsed };
       }
     } catch (e) {

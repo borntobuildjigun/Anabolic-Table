@@ -9,25 +9,17 @@ const Onboarding: React.FC = () => {
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    // 소수점 첫째 자리까지만 허용하는 정규식
     if (name === 'weight' || name === 'targetWeight') {
       if (value !== '' && !/^\d*\.?\d{0,1}$/.test(value)) return;
     }
-
     const numValue = value === '' ? 0 : Number(value);
-    
-    setUserData({
-      ...userData,
-      [name]: numValue
-    });
+    setUserData({ ...userData, [name]: numValue });
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    // 비어있을 경우 기본값 강제 할당
     if (value === '' || Number(value) === 0) {
-      const defaults: Record<string, number> = { weight: 70, targetWeight: 70, height: 175, birthYear: 1995, bodyFat: 15 };
+      const defaults: Record<string, number> = { weight: 70, targetWeight: 70, height: 175, birthYear: 1995, bodyFat: 15, targetWeeks: 8 };
       setUserData({ ...userData, [name]: defaults[name] });
     }
   };
@@ -59,94 +51,37 @@ const Onboarding: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>현재 체중 (kg)</label>
-            <input 
-              type="number" 
-              inputMode="decimal"
-              step="0.1"
-              name="weight" 
-              value={userData.weight || ''} 
-              onChange={handleNumberChange}
-              onBlur={handleBlur}
-              placeholder="70.0"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
-            />
+            <input type="number" inputMode="decimal" step="0.1" name="weight" value={userData.weight || ''} onChange={handleNumberChange} onBlur={handleBlur} placeholder="70.0" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }} />
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>목표 체중 (kg)</label>
-            <input 
-              type="number" 
-              inputMode="decimal"
-              step="0.1"
-              name="targetWeight" 
-              value={userData.targetWeight || ''} 
-              onChange={handleNumberChange}
-              onBlur={handleBlur}
-              placeholder="75.0"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
-            />
+            <input type="number" inputMode="decimal" step="0.1" name="targetWeight" value={userData.targetWeight || ''} onChange={handleNumberChange} onBlur={handleBlur} placeholder="65.0" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }} />
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>신장 (cm)</label>
-            <input 
-              type="number" 
-              inputMode="numeric"
-              name="height" 
-              value={userData.height || ''} 
-              onChange={handleNumberChange}
-              onBlur={handleBlur}
-              placeholder="175"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
-            />
+            <input type="number" inputMode="numeric" name="height" value={userData.height || ''} onChange={handleNumberChange} onBlur={handleBlur} placeholder="175" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }} />
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>출생년도 (4자리)</label>
-            <input 
-              type="number" 
-              inputMode="numeric"
-              name="birthYear" 
-              value={userData.birthYear || ''} 
-              onChange={handleNumberChange}
-              onBlur={handleBlur}
-              placeholder="1995"
-              maxLength={4}
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
-            />
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>* 만 나이로 자동 계산됩니다 (2026 기준)</p>
+            <input type="number" inputMode="numeric" name="birthYear" value={userData.birthYear || ''} onChange={handleNumberChange} onBlur={handleBlur} placeholder="1995" maxLength={4} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }} />
           </div>
         </div>
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>체지방률 (%)</label>
-          <input 
-            type="number" 
-            inputMode="numeric"
-            name="bodyFat" 
-            value={userData.bodyFat || ''} 
-            onChange={handleNumberChange}
-            onBlur={handleBlur}
-            placeholder="15"
-            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>체지방률 (%)</label>
+            <input type="number" inputMode="numeric" name="bodyFat" value={userData.bodyFat || ''} onChange={handleNumberChange} onBlur={handleBlur} placeholder="15" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-secondary)', fontWeight: 'bold' }}>목표 기간 (주)</label>
+            <input type="number" inputMode="numeric" name="targetWeeks" value={userData.targetWeeks || ''} onChange={handleNumberChange} onBlur={handleBlur} placeholder="8" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--accent-secondary)', color: 'white' }} />
+          </div>
         </div>
 
-        <button 
-          type="submit" 
-          style={{ 
-            width: '100%', 
-            padding: '1rem', 
-            borderRadius: '8px', 
-            background: 'var(--accent-primary)', 
-            color: 'black', 
-            fontWeight: '900',
-            fontSize: '1.1rem',
-            marginTop: '1rem'
-          }}
-        >
-          다음 단계로 (GOAL)
-        </button>
+        <button type="submit" style={{ width: '100%', padding: '1rem', borderRadius: '8px', background: 'var(--accent-primary)', color: 'black', fontWeight: '900', fontSize: '1.1rem', marginTop: '1rem' }}>다음 단계로 (GOAL)</button>
       </form>
     </div>
   );
