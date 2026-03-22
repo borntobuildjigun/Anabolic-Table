@@ -1,5 +1,5 @@
 import { UserData } from '../App';
-import { INGREDIENTS, Ingredient } from './ingredients';
+import { INGREDIENTS } from './ingredients';
 
 export interface Macros {
   calories: number;
@@ -24,11 +24,8 @@ export interface MealPlan {
   foods: FoodItem[];
 }
 
-// 오차 범위 허용 (5g)
-const MACRO_ERROR_MARGIN = 5;
-
-// 기본 재료 (재료 선택 안했을 시 백업)
-const DEFAULT_FOODS = {
+// 기본 권장 재료 (선택 안했을 시 강제 할당)
+const DEFAULT_BACKUP = {
   carbs: '현미밥',
   protein: '닭가슴살',
   fats: '아몬드'
@@ -42,7 +39,7 @@ export const calculateMacros = (userData: UserData): Macros => {
 
   const tdee = bmr * activityLevel;
   let targetCalories = tdee;
-  const proteinG = weight * 2.0;
+  const proteinG = weight * 2.0; // 보디빌딩 표준: 체중 x 2g
 
   if (goal === 'BULK') targetCalories += 400;
   else if (goal === 'LEAN') targetCalories += 200;
@@ -61,47 +58,43 @@ export const calculateMacros = (userData: UserData): Macros => {
 };
 
 /**
- * 그리디 알고리즘 기반 식단 생성 (최적화 버전)
+ * Top-Down 직관적 배분 로직 (0.1초 미만 초고속 연산)
  */
 export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
-  const totalMacros = calculateMacros(userData);
+  const dailyTotal = calculateMacros(userData);
   const { mealCount, workoutTime, selectedIngredients, isReadyMealMode } = userData;
   
-  // 1. 끼니별 매크로 분배 (Workout Timing 적용)
+  // 1. 끼니별 목표 매크로 단순 분배 (Integer 단위)
+  const pPerMeal = Math.round(dailyTotal.protein / mealCount);
+  const fPerMeal = Math.round(dailyTotal.fat / mealCount);
+  
+  // 탄수화물 타이밍 로직 (Workout Fueling)
   const [wHour] = workoutTime.split(':').map(Number);
   const mealIndices = Array.from({ length: mealCount }, (_, i) => 8 + i * 4);
   const diffs = mealIndices.map(time => Math.abs(time - wHour));
-  const sortedIndices = [...Array(mealCount).keys()].sort((a, b) => diffs[a] - diffs[b]);
-  const workoutFuelIndices = sortedIndices.slice(0, 2);
+  const sorted = [...Array(mealCount).keys()].sort((a, b) => diffs[a] - diffs[b]);
+  const fuelIndices = sorted.slice(0, 2);
 
-  const fuelCarbsTotal = totalMacros.carbs * 0.65;
-  const otherCarbsTotal = totalMacros.carbs - fuelCarbsTotal;
-  
-  const fuelCarbPerMeal = fuelCarbsTotal / 2;
-  const otherCarbPerMeal = otherCarbsTotal / (mealCount - 2 || 1);
-  const pPerMeal = totalMacros.protein / mealCount;
-  const fPerMeal = totalMacros.fat / mealCount;
+  const fuelCarbsTotal = dailyTotal.carbs * 0.65;
+  const otherCarbsTotal = dailyTotal.carbs - fuelCarbsTotal;
+  const fuelCPerMeal = Math.round(fuelCarbsTotal / 2);
+  const otherCPerMeal = Math.round(otherCarbsTotal / (mealCount - 2 || 1));
 
-  const plan: MealPlan[] = [];
+  // 2. 재료 할당 및 중량 역산 (단순 산술)
+  const cName = selectedIngredients.carbs[0] || DEFAULT_BACKUP.carbs;
+  const pName = selectedIngredients.protein[0] || DEFAULT_BACKUP.protein;
+  const fName = selectedIngredients.fats[0] || DEFAULT_BACKUP.fats;
 
-  for (let i = 0; i < mealCount; i++) {
-    const isFuel = workoutFuelIndices.includes(i);
-    const targetC = isFuel ? fuelCarbPerMeal : otherCarbPerMeal;
+  const plan: MealPlan[] = Array.from({ length: mealCount }, (_, i) => {
+    const isFuel = fuelIndices.includes(i);
+    const targetC = isFuel ? fuelCPerMeal : otherCPerMeal;
     const targetP = pPerMeal;
     const targetF = fPerMeal;
 
-    // 2. 음식 중량 계산 (Greedy)
-    const foods: FoodItem[] = [];
-    
-    // 재료 선택 안했을 시 기본 재료 사용
-    const cName = selectedIngredients.carbs[0] || DEFAULT_FOODS.carbs;
-    const pName = selectedIngredients.protein[0] || DEFAULT_FOODS.protein;
-    const fName = selectedIngredients.fats[0] || DEFAULT_FOODS.fats;
-
-    const calcFood = (type: 'carbs' | 'protein' | 'fats', amount: number, name: string) => {
-      const ing = INGREDIENTS[type][name] || INGREDIENTS[type][DEFAULT_FOODS[type]];
-      const macroPer100 = type === 'carbs' ? ing.carbs : type === 'protein' ? ing.protein : ing.fat;
-      const weight = Math.round((amount / (macroPer100 || 1)) * 100);
+    const calculateWeight = (type: 'carbs' | 'protein' | 'fats', amount: number, name: string) => {
+      const ing = INGREDIENTS[type][name] || INGREDIENTS[type][DEFAULT_BACKUP[type]];
+      const macroValue = type === 'carbs' ? ing.carbs : type === 'protein' ? ing.protein : ing.fat;
+      const weight = Math.round((amount / (macroValue || 1)) * 100);
 
       if (isReadyMealMode && ing.readyMealUnit) {
         return {
@@ -115,23 +108,25 @@ export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
       return { name: ing.name, weight, unit: 'g' };
     };
 
-    foods.push(calcFood('carbs', targetC, cName));
-    foods.push(calcFood('protein', targetP, pName));
-    if (targetF > 3) foods.push(calcFood('fats', targetF, fName));
+    const foods: FoodItem[] = [
+      calculateWeight('carbs', targetC, cName),
+      calculateWeight('protein', targetP, pName)
+    ];
+    if (targetF > 2) foods.push(calculateWeight('fats', targetF, fName));
 
-    plan.push({
+    return {
       id: i,
       mealName: `${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} MEAL`,
       macros: {
         calories: Math.round(targetC * 4 + targetP * 4 + targetF * 9),
-        protein: Math.round(targetP),
-        carbs: Math.round(targetC),
-        fat: Math.round(targetF),
+        protein: targetP,
+        carbs: targetC,
+        fat: targetF,
         isWorkoutFuel: isFuel
       },
       foods
-    });
-  }
+    };
+  });
 
   return plan;
 };
@@ -140,7 +135,7 @@ export const calculateWaterIntake = (weight: number): number => weight * 0.05;
 
 export const getAIRecommendation = (macros: Macros, userData: UserData): string[] => {
   const recs: string[] = [];
-  if (userData.goal === 'BULK' && macros.calories < 2500) recs.push("벌크업을 위해 견과류를 추가하여 칼로리를 높이세요.");
-  if (macros.fat < 40) recs.push("지방이 부족합니다. 아몬드 10알을 추가하세요.");
+  if (userData.goal === 'BULK' && macros.calories < 2500) recs.push("칼로리가 부족합니다. 견과류 섭취를 늘리세요.");
+  if (macros.fat < 35) recs.push("지방이 부족합니다. 아몬드 10알을 추가하세요.");
   return recs;
 };
