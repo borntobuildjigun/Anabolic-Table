@@ -10,7 +10,7 @@ const MealSchedule: React.FC = () => {
   if (!context) return null;
   const { userData, setUserData } = context;
 
-  // 1. 계산 로직 분리 및 메모이제이션
+  // 계산 로직은 항상 최신 userData를 바탕으로 수행
   const mealPlan = useMemo(() => generateOptimizedMealPlan(userData), [userData]);
   const totalMacros = useMemo(() => calculateMacros(userData), [userData]);
   const recommendations = useMemo(() => getAIRecommendation(totalMacros, userData), [totalMacros, userData]);
@@ -21,38 +21,29 @@ const MealSchedule: React.FC = () => {
     setUserData({ ...userData, mealsStatus: newStatus });
   };
 
-  // PC 브라우저 렉 방지용 비동기 래퍼 함수
-  const executeAsyncUpdate = useCallback((updateFn: () => void) => {
-    setIsProcessing(true);
-    // 1단계: UI 상태 변경을 위해 메인 스레드에 제어권 양도
-    setTimeout(() => {
-      // 2단계: 실제 연산 수행
-      updateFn();
-      // 3단계: 렌더링 후 로딩 해제
-      requestAnimationFrame(() => {
-        setIsProcessing(false);
-      });
-    }, 100);
-  }, []);
-
   const handleModeChange = (isReady: boolean) => {
-    executeAsyncUpdate(() => {
+    setIsProcessing(true);
+    // 비동기 처리로 UI 업데이트 시간을 벌어줌
+    setTimeout(() => {
       setUserData(prev => ({ ...prev, isReadyMealMode: isReady }));
-    });
+      setIsProcessing(false);
+    }, 100);
   };
 
   const handleMealCountChange = (count: number) => {
-    executeAsyncUpdate(() => {
+    setIsProcessing(true);
+    setTimeout(() => {
       setUserData(prev => ({ 
         ...prev, 
         mealCount: count, 
         mealsStatus: new Array(count).fill(false) 
       }));
-    });
+      setIsProcessing(false);
+    }, 100);
   };
 
   return (
-    <div style={{ marginTop: '2rem', minHeight: '500px' }}>
+    <div style={{ marginTop: '2rem' }}>
       <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem' }}>
         전문가용 식단표
       </h2>
@@ -74,28 +65,24 @@ const MealSchedule: React.FC = () => {
       {/* 모드 전환 */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
         <button 
-          disabled={isProcessing}
           onClick={() => handleModeChange(false)}
           style={{ 
             flex: 1, padding: '0.75rem', borderRadius: '8px', 
             background: !userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-secondary)', 
             color: !userData.isReadyMealMode ? 'black' : 'white', 
-            fontWeight: 'bold', cursor: isProcessing ? 'not-allowed' : 'pointer',
-            transition: 'none' /* PC 리플로우 방지 */
+            fontWeight: 'bold', border: '1px solid var(--border-color)'
           }}
         >
           원물 모드
         </button>
         <button 
-          disabled={isProcessing}
           onClick={() => handleModeChange(true)}
           style={{ 
             flex: 1, padding: '0.75rem', borderRadius: '8px', 
             background: userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-secondary)', 
             color: userData.isReadyMealMode ? 'black' : 'white', 
             fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            cursor: isProcessing ? 'not-allowed' : 'pointer',
-            transition: 'none'
+            border: '1px solid var(--border-color)'
           }}
         >
           <Package size={18} /> 간편식 모드
@@ -107,14 +94,12 @@ const MealSchedule: React.FC = () => {
         {[3, 4, 5].map(count => (
           <button 
             key={count} 
-            disabled={isProcessing}
             onClick={() => handleMealCountChange(count)} 
             style={{ 
               flex: 1, padding: '1rem', borderRadius: '10px', 
               background: userData.mealCount === count ? 'var(--accent-primary)' : 'transparent', 
               color: userData.mealCount === count ? 'black' : 'var(--text-secondary)', 
-              fontWeight: '900', cursor: isProcessing ? 'not-allowed' : 'pointer',
-              transition: 'none'
+              fontWeight: '900'
             }}
           >
             {count} MEALS
@@ -122,9 +107,9 @@ const MealSchedule: React.FC = () => {
         ))}
       </div>
 
-      <div style={{ minHeight: '400px', position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
         {isProcessing ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem' }}>
             <Loader2 className="animate-spin" size={48} color="var(--accent-primary)" />
             <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>식단 재배정 중...</p>
           </div>

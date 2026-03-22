@@ -37,7 +37,6 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--bg-primary);
-  /* PC 숫자 폰트 폭 고정 (tabular-nums) */
   font-variant-numeric: tabular-nums;
 }
 
@@ -46,8 +45,6 @@ body {
   max-width: 600px;
   margin: 0 auto;
   padding: 1rem;
-  /* 레이아웃 점핑 방지 */
-  min-height: 100vh;
 }
 
 h1, h2, h3, h4 {
@@ -69,16 +66,16 @@ button {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+  display: inline-block;
 }
 
 .neon-border {
   border: 1px solid var(--border-color);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: border-color 0.2s ease;
 }
 
 .neon-border:hover {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 10px rgba(204, 255, 0, 0.2);
 }
 
 .card {
@@ -87,10 +84,8 @@ button {
   padding: 1.5rem;
   margin-bottom: 1rem;
   border: 1px solid var(--border-color);
-  /* PC 렌더링 자원 효율화 */
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 180px; 
-  transform: translateZ(0); /* 하드웨어 가속 유도 */
+  /* 불안정한 content-visibility 제거 */
+  overflow: hidden;
 }
 
 .bold-value {
