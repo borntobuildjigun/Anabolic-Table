@@ -4,6 +4,7 @@ import GoalSelection from './components/GoalSelection';
 import Dashboard from './components/Dashboard';
 import IngredientPicker from './components/IngredientPicker';
 import MealSchedule from './components/MealSchedule';
+import WeightLossReport from './components/WeightLossReport';
 
 export type UserGoal = 'BULK' | 'LEAN' | 'CUT';
 
@@ -99,6 +100,7 @@ const App: React.FC = () => {
           {step === 4 && (
             <>
               <Dashboard />
+              <WeightLossReport />
               <MealSchedule />
             </>
           )}
@@ -106,7 +108,7 @@ const App: React.FC = () => {
         
         {step > 1 && (
           <button 
-            onClick={() => setStep(step - 1)}
+            onClick={() => setStep(1)}
             style={{ 
               marginTop: '2rem', 
               background: 'none', 
@@ -117,7 +119,7 @@ const App: React.FC = () => {
               padding: '1rem'
             }}
           >
-            이전 단계로 돌아가기
+            데이터 수정하러 가기
           </button>
         )}
       </div>
