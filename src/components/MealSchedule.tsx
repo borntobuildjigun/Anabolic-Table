@@ -1,7 +1,7 @@
-import React, { useContext, useMemo, useState, useEffect } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { AppContext } from '../App';
 import { generateOptimizedMealPlan, calculateMacros, getAIRecommendation } from '../utils/calculations';
-import { CheckCircle2, Circle, Lightbulb, Zap, Package, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Circle, Lightbulb, Zap, Package, Clock, Loader2 } from 'lucide-react';
 
 const MealSchedule: React.FC = () => {
   const context = useContext(AppContext);
@@ -10,30 +10,14 @@ const MealSchedule: React.FC = () => {
   if (!context) return null;
   const { userData, setUserData } = context;
 
-  // 1. 방어적 연산 및 초기값 설정
-  const mealPlan = useMemo(() => {
-    if (!userData || !userData.workoutTime) return [];
-    try {
-      return generateOptimizedMealPlan(userData);
-    } catch (e) {
-      console.error("Meal Generation Error:", e);
-      return [];
-    }
-  }, [userData]);
-
-  const totalMacros = useMemo(() => {
-    if (!userData) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
-    return calculateMacros(userData);
-  }, [userData]);
-
-  const recommendations = useMemo(() => {
-    if (!totalMacros || !userData) return [];
-    return getAIRecommendation(totalMacros, userData);
-  }, [totalMacros, userData]);
+  // 1. 점진적 렌더링을 위한 메모이제이션
+  // 데이터가 일부 비어있어도 generateOptimizedMealPlan 내부의 DEFAULT_BACKUP이 작동함
+  const mealPlan = useMemo(() => generateOptimizedMealPlan(userData), [userData]);
+  const totalMacros = useMemo(() => calculateMacros(userData), [userData]);
+  const recommendations = useMemo(() => getAIRecommendation(totalMacros, userData), [totalMacros, userData]);
 
   const toggleMealStatus = (index: number) => {
-    if (!userData?.mealsStatus) return;
-    const newStatus = [...userData.mealsStatus];
+    const newStatus = [...(userData.mealsStatus || [])];
     newStatus[index] = !newStatus[index];
     setUserData({ ...userData, mealsStatus: newStatus });
   };
@@ -43,7 +27,7 @@ const MealSchedule: React.FC = () => {
     setTimeout(() => {
       setUserData(prev => ({ ...prev, isReadyMealMode: isReady }));
       setIsProcessing(false);
-    }, 100);
+    }, 50); // 체감 불가능한 짧은 딜레이로 즉시 업데이트
   };
 
   const handleMealCountChange = (count: number) => {
@@ -55,19 +39,8 @@ const MealSchedule: React.FC = () => {
         mealsStatus: new Array(count).fill(false) 
       }));
       setIsProcessing(false);
-    }, 100);
+    }, 50);
   };
-
-  // 데이터 부족 시 안내 UI
-  if (!userData?.workoutTime) {
-    return (
-      <div className="card" style={{ marginTop: '2rem', textAlign: 'center', padding: '2rem' }}>
-        <AlertCircle size={48} color="var(--accent-secondary)" style={{ marginBottom: '1rem' }} />
-        <p style={{ color: 'var(--text-secondary)' }}>사용자 데이터를 불러오는 중이거나 데이터가 부족합니다.</p>
-        <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', color: 'var(--accent-primary)', textDecoration: 'underline' }}>새로고침</button>
-      </div>
-    );
-  }
 
   return (
     <div style={{ marginTop: '2rem' }}>
@@ -75,6 +48,7 @@ const MealSchedule: React.FC = () => {
         전문가용 식단표
       </h2>
 
+      {/* 훈련 시간 설정 - 항상 표시 */}
       <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)' }}>
           <Clock size={20} />
@@ -135,11 +109,11 @@ const MealSchedule: React.FC = () => {
         {isProcessing ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem' }}>
             <Loader2 className="animate-spin" size={48} color="var(--accent-primary)" />
-            <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>식단 재배정 중...</p>
+            <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>식단 업데이트 중...</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {mealPlan && mealPlan.length > 0 ? mealPlan.map((meal) => {
+            {mealPlan.map((meal) => {
               const isDone = userData.mealsStatus?.[meal.id] || false;
               return (
                 <div key={meal.id} className="card" style={{ opacity: isDone ? 0.4 : 1, border: isDone ? '1px solid var(--border-color)' : meal.macros?.isWorkoutFuel ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)', background: isDone ? 'var(--bg-primary)' : 'var(--bg-secondary)', position: 'relative' }}>
@@ -171,9 +145,7 @@ const MealSchedule: React.FC = () => {
                   </div>
                 </div>
               );
-            }) : (
-              <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>식단 데이터를 생성할 수 없습니다.</p>
-            )}
+            })}
           </div>
         )}
       </div>

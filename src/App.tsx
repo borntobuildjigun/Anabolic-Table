@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import Onboarding from './components/Onboarding';
 import GoalSelection from './components/GoalSelection';
 import Dashboard from './components/Dashboard';
@@ -36,11 +36,12 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// 완벽한 기본 데이터 세트 (70kg 남성 기준)
 const INITIAL_DATA: UserData = {
-  weight: 80,
-  targetWeight: 85,
-  height: 180,
-  age: 30,
+  weight: 70,
+  targetWeight: 75,
+  height: 175,
+  age: 25,
   gender: 'MALE',
   bodyFat: 15,
   goal: 'BULK',
@@ -58,8 +59,17 @@ const INITIAL_DATA: UserData = {
 
 const App: React.FC = () => {
   const [userData, setUserData] = useState<UserData>(() => {
-    const saved = localStorage.getItem('anabolic_user_data');
-    return saved ? JSON.parse(saved) : INITIAL_DATA;
+    try {
+      const saved = localStorage.getItem('anabolic_user_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // 저장된 데이터가 있더라도 필수 필드가 누락되었을 경우 초기값과 합성
+        return { ...INITIAL_DATA, ...parsed };
+      }
+    } catch (e) {
+      console.error("Storage Error:", e);
+    }
+    return INITIAL_DATA;
   });
 
   const [step, setStep] = useState(() => {
@@ -80,12 +90,16 @@ const App: React.FC = () => {
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Professional Meal Planner</p>
         </header>
 
-        <main>
+        <main style={{ minHeight: '600px' }}>
           {step === 1 && <Onboarding />}
           {step === 2 && <GoalSelection />}
           {step === 3 && <IngredientPicker />}
-          {step === 4 && <Dashboard />}
-          {step === 4 && <MealSchedule />}
+          {step === 4 && (
+            <>
+              <Dashboard />
+              <MealSchedule />
+            </>
+          )}
         </main>
         
         {step > 1 && (
@@ -97,7 +111,8 @@ const App: React.FC = () => {
               color: 'var(--text-muted)', 
               textDecoration: 'underline',
               width: '100%',
-              textAlign: 'center'
+              textAlign: 'center',
+              padding: '1rem'
             }}
           >
             이전 단계로 돌아가기
