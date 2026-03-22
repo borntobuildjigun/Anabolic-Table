@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState, useEffect } from 'react';
+import React, { useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { AppContext } from '../App';
 import { generateOptimizedMealPlan, calculateMacros, getAIRecommendation } from '../utils/calculations';
 import { CheckCircle2, Circle, Lightbulb, Zap, Package, Copy, Clock, Loader2 } from 'lucide-react';
@@ -21,24 +21,38 @@ const MealSchedule: React.FC = () => {
     setUserData({ ...userData, mealsStatus: newStatus });
   };
 
-  const handleModeChange = (isReady: boolean) => {
+  // PC 브라우저 렉 방지용 비동기 래퍼 함수
+  const executeAsyncUpdate = useCallback((updateFn: () => void) => {
     setIsProcessing(true);
+    // 1단계: UI 상태 변경을 위해 메인 스레드에 제어권 양도
     setTimeout(() => {
-      setUserData({ ...userData, isReadyMealMode: isReady });
-      setIsProcessing(false);
-    }, 150); // 짧은 딜레이로 렌더링 안정성 확보
+      // 2단계: 실제 연산 수행
+      updateFn();
+      // 3단계: 렌더링 후 로딩 해제
+      requestAnimationFrame(() => {
+        setIsProcessing(false);
+      });
+    }, 100);
+  }, []);
+
+  const handleModeChange = (isReady: boolean) => {
+    executeAsyncUpdate(() => {
+      setUserData(prev => ({ ...prev, isReadyMealMode: isReady }));
+    });
   };
 
   const handleMealCountChange = (count: number) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setUserData({ ...userData, mealCount: count, mealsStatus: new Array(count).fill(false) });
-      setIsProcessing(false);
-    }, 150);
+    executeAsyncUpdate(() => {
+      setUserData(prev => ({ 
+        ...prev, 
+        mealCount: count, 
+        mealsStatus: new Array(count).fill(false) 
+      }));
+    });
   };
 
   return (
-    <div style={{ marginTop: '2rem' }}>
+    <div style={{ marginTop: '2rem', minHeight: '500px' }}>
       <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem' }}>
         전문가용 식단표
       </h2>
@@ -57,7 +71,7 @@ const MealSchedule: React.FC = () => {
         />
       </div>
 
-      {/* 모드 전환 - 비활성화 기능 추가 */}
+      {/* 모드 전환 */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
         <button 
           disabled={isProcessing}
@@ -66,7 +80,8 @@ const MealSchedule: React.FC = () => {
             flex: 1, padding: '0.75rem', borderRadius: '8px', 
             background: !userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-secondary)', 
             color: !userData.isReadyMealMode ? 'black' : 'white', 
-            fontWeight: 'bold', cursor: isProcessing ? 'not-allowed' : 'pointer' 
+            fontWeight: 'bold', cursor: isProcessing ? 'not-allowed' : 'pointer',
+            transition: 'none' /* PC 리플로우 방지 */
           }}
         >
           원물 모드
@@ -79,7 +94,8 @@ const MealSchedule: React.FC = () => {
             background: userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-secondary)', 
             color: userData.isReadyMealMode ? 'black' : 'white', 
             fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            cursor: isProcessing ? 'not-allowed' : 'pointer'
+            cursor: isProcessing ? 'not-allowed' : 'pointer',
+            transition: 'none'
           }}
         >
           <Package size={18} /> 간편식 모드
@@ -97,7 +113,8 @@ const MealSchedule: React.FC = () => {
               flex: 1, padding: '1rem', borderRadius: '10px', 
               background: userData.mealCount === count ? 'var(--accent-primary)' : 'transparent', 
               color: userData.mealCount === count ? 'black' : 'var(--text-secondary)', 
-              fontWeight: '900', cursor: isProcessing ? 'not-allowed' : 'pointer'
+              fontWeight: '900', cursor: isProcessing ? 'not-allowed' : 'pointer',
+              transition: 'none'
             }}
           >
             {count} MEALS
@@ -105,48 +122,50 @@ const MealSchedule: React.FC = () => {
         ))}
       </div>
 
-      {isProcessing ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem' }}>
-          <Loader2 className="animate-spin" size={48} color="var(--accent-primary)" />
-          <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>식단 데이터 구성 중...</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {mealPlan.map((meal) => {
-            const isDone = userData.mealsStatus[meal.id];
-            return (
-              <div key={meal.id} className="card" style={{ opacity: isDone ? 0.4 : 1, border: isDone ? '1px solid var(--border-color)' : meal.macros.isWorkoutFuel ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)', background: isDone ? 'var(--bg-primary)' : 'var(--bg-secondary)', position: 'relative' }}>
-                {meal.macros.isWorkoutFuel && (
-                  <div style={{ position: 'absolute', top: '-12px', left: '20px', background: 'var(--accent-primary)', color: 'black', padding: '2px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Zap size={12} fill="black" /> WORKOUT FUEL
-                  </div>
-                )}
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1.1rem', color: meal.macros.isWorkoutFuel ? 'var(--accent-primary)' : 'white' }}>{meal.mealName}</h3>
-                  <button onClick={() => toggleMealStatus(meal.id)} style={{ background: 'none', color: isDone ? 'var(--success)' : 'var(--text-muted)' }}>
-                    {isDone ? <CheckCircle2 size={28} color="#00ff88" /> : <Circle size={28} />}
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {meal.foods.map((food, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ 
-                        background: idx === 0 ? 'var(--accent-primary)' : idx === 1 ? '#00ccff' : 'var(--accent-secondary)', 
-                        color: 'black', padding: '0.4rem 0.8rem', borderRadius: '6px', fontWeight: '900', minWidth: '95px', textAlign: 'center' 
-                      }}>
-                        {food.isReady ? food.readyValue : food.weight}{food.unit}
-                      </div>
-                      <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>{food.name}</div>
+      <div style={{ minHeight: '400px', position: 'relative' }}>
+        {isProcessing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '1rem' }}>
+            <Loader2 className="animate-spin" size={48} color="var(--accent-primary)" />
+            <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>식단 재배정 중...</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {mealPlan.map((meal) => {
+              const isDone = userData.mealsStatus[meal.id];
+              return (
+                <div key={meal.id} className="card" style={{ opacity: isDone ? 0.4 : 1, border: isDone ? '1px solid var(--border-color)' : meal.macros.isWorkoutFuel ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)', background: isDone ? 'var(--bg-primary)' : 'var(--bg-secondary)', position: 'relative' }}>
+                  {meal.macros.isWorkoutFuel && (
+                    <div style={{ position: 'absolute', top: '-12px', left: '20px', background: 'var(--accent-primary)', color: 'black', padding: '2px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Zap size={12} fill="black" /> WORKOUT FUEL
                     </div>
-                  ))}
+                  )}
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', color: meal.macros.isWorkoutFuel ? 'var(--accent-primary)' : 'white' }}>{meal.mealName}</h3>
+                    <button onClick={() => toggleMealStatus(meal.id)} style={{ background: 'none', color: isDone ? 'var(--success)' : 'var(--text-muted)' }}>
+                      {isDone ? <CheckCircle2 size={28} color="#00ff88" /> : <Circle size={28} />}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {meal.foods.map((food, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ 
+                          background: idx === 0 ? 'var(--accent-primary)' : idx === 1 ? '#00ccff' : 'var(--accent-secondary)', 
+                          color: 'black', padding: '0.4rem 0.8rem', borderRadius: '6px', fontWeight: '900', minWidth: '95px', textAlign: 'center' 
+                        }}>
+                          {food.isReady ? food.readyValue : food.weight}{food.unit}
+                        </div>
+                        <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>{food.name}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {recommendations.length > 0 && !isProcessing && (
         <div className="card" style={{ marginTop: '2rem', background: 'rgba(204, 255, 0, 0.05)', border: '1px solid var(--accent-primary)' }}>
