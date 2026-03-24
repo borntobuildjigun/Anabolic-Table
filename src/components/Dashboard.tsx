@@ -8,7 +8,7 @@ const Dashboard: React.FC = () => {
   const context = useContext(AppContext);
   if (!context) return null;
 
-  const { userData, setStep } = context;
+  const { userData, setUserData, setStep } = context;
   const macros = useMemo(() => calculateMacros(userData), [userData]);
   const waterIntake = useMemo(() => calculateWaterIntake(userData.weight), [userData.weight]);
 
