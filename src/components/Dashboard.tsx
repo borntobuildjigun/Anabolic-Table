@@ -37,8 +37,21 @@ const Dashboard: React.FC = () => {
         <ArrowLeft size={18} /> 처음부터 다시 설정하기
       </button>
 
-      <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem' }}>
+      <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         매크로 분석 대시보드
+        {userData.goal === 'CUT' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--bg-secondary)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>식단 기간: <strong>{userData.targetWeeks}주</strong></span>
+            <input 
+              type="range" 
+              min="2" 
+              max="24" 
+              value={userData.targetWeeks} 
+              onChange={(e) => setUserData({ ...userData, targetWeeks: parseInt(e.target.value) })}
+              style={{ width: '100px', accentColor: 'var(--accent-primary)' }}
+            />
+          </div>
+        )}
       </h2>
       
       <div className="card">

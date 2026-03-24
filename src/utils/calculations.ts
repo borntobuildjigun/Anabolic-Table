@@ -17,6 +17,7 @@ export interface WeightLossReportData {
   isWarning: boolean;
   isIdeal: boolean;
   warningMsg: string;
+  achievementRate: number;
 }
 
 export interface FoodItem {
@@ -72,8 +73,11 @@ export const calculateMacros = (userData: UserData): Macros => {
     
     targetCalories = tdee - dailyDeficitNeeded;
     
-    // 안전 장치: BMR 이하로는 떨어지지 않게 설정
-    if (targetCalories < bmr) targetCalories = bmr;
+    // 안전 장치: 기초대사량(BMR)의 90% 이하로 떨어질 경우 BMR 수준으로 조정
+    const minimumSafetyCalories = bmr * 0.9;
+    if (targetCalories < minimumSafetyCalories) {
+      targetCalories = bmr;
+    }
   }
 
   const proteinG = weight * 2.0;
@@ -91,6 +95,7 @@ export const calculateMacros = (userData: UserData): Macros => {
 
 export const calculateWeightLossReport = (userData: UserData): WeightLossReportData => {
   const tdee = getTDEE(userData);
+  const bmr = getBMR(userData);
   const macros = calculateMacros(userData);
   const deficit = tdee - macros.calories;
   
@@ -98,33 +103,29 @@ export const calculateWeightLossReport = (userData: UserData): WeightLossReportD
   const weeklyLossKg = (dailyLossG * 7) / 1000;
   
   const weightToLose = userData.weight - userData.targetWeight;
-  const weeksToTarget = dailyLossG > 0 ? (weightToLose * 1000) / (dailyLossG * 7) : 0;
+  const totalDeficitNeeded = weightToLose * 7700;
+  const dailyDeficitNeeded = totalDeficitNeeded / (userData.targetWeeks * 7);
 
   let isWarning = false;
-  let isIdeal = false;
   let warningMsg = "";
 
-  const weeklyLossPercent = (weeklyLossKg / userData.weight) * 100;
-
-  if (weeklyLossPercent > 1.5) {
+  // 안전 장치 경고 문구
+  if (tdee - dailyDeficitNeeded < bmr * 0.9) {
     isWarning = true;
-    warningMsg = "⚠️ 경고: 감량 속도가 너무 빠릅니다! 근손실과 호르몬 수치 저하 위험이 있습니다. 기간을 더 길게 잡거나 식단량을 늘리세요.";
-  } else if (weeklyLossPercent >= 0.5 && weeklyLossPercent <= 1.0) {
-    isIdeal = true;
-    warningMsg = "✨ 이상적인 감량 속도입니다. 근육을 지키며 다이어트하기 최적의 상태입니다.";
-  } else if (deficit <= 0 && userData.goal === 'CUT') {
-    isWarning = true;
-    warningMsg = "목표 기간 내 달성이 어려울 수 있습니다. 활동량을 늘리거나 기간을 조정하세요.";
+    warningMsg = "⚠️ 설정하신 기간이 너무 짧아 건강한 감량이 어렵습니다. 기간을 늘리는 것을 권장합니다.";
   }
+
+  const achievementRate = Math.min(100, Math.max(0, (deficit / dailyDeficitNeeded) * 100)) || 0;
 
   return {
     dailyDeficit: Math.round(deficit),
     dailyLossG: Math.round(dailyLossG),
     weeklyLossKg: Number(weeklyLossKg.toFixed(2)),
-    weeksToTarget: Math.ceil(weeksToTarget),
+    weeksToTarget: userData.targetWeeks,
     isWarning,
-    isIdeal,
-    warningMsg
+    isIdeal: achievementRate >= 95,
+    warningMsg,
+    achievementRate: Math.round(achievementRate)
   };
 };
 
