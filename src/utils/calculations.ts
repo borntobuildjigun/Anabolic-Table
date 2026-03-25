@@ -41,12 +41,29 @@ const DEFAULT_BACKUP = {
   fats: '아몬드'
 };
 
+/**
+ * 지능형 공식 선택 로직:
+ * - 체지방률(bodyFat)이 0보다 크면: Katch-McArdle (제지방량 기반)
+ * - 체지방률이 없으면: Mifflin-St Jeor (기존 표준 방식)
+ */
 export const getBMR = (userData: UserData): number => {
   if (!userData) return 0;
-  const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE' } = userData;
+  const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE', bodyFat = 0 } = userData;
+
+  if (bodyFat > 0) {
+    // Katch-McArdle: BMR = 370 + (21.6 * LBM)
+    const lbm = weight * (1 - bodyFat / 100);
+    return 370 + (21.6 * lbm);
+  }
+
+  // Mifflin-St Jeor: 표준 공식
   const age = 2026 - birthYear;
   let bmr = 10 * weight + 6.25 * height - 5 * age;
   return gender === 'MALE' ? bmr + 5 : bmr - 161;
+};
+
+export const getFormulaName = (userData: UserData): string => {
+  return (userData?.bodyFat && userData.bodyFat > 0) ? "Katch-McArdle" : "Mifflin-St Jeor";
 };
 
 export const getTDEE = (userData: UserData): number => {
@@ -66,14 +83,12 @@ export const calculateMacros = (userData: UserData): Macros => {
   } else if (goal === 'LEAN') {
     targetCalories += 200;
   } else if (goal === 'CUT') {
-    // 과학적 결손 계산: (감량 kg * 7700) / (주 * 7일)
     const weightToLose = Math.max(0, weight - targetWeight);
     const totalDeficitKcal = weightToLose * 7700;
     const dailyDeficitNeeded = totalDeficitKcal / (targetWeeks * 7);
     
     targetCalories = tdee - dailyDeficitNeeded;
     
-    // 안전 장치: 기초대사량(BMR)의 90% 이하로 떨어질 경우 BMR 수준으로 조정
     const minimumSafetyCalories = bmr * 0.9;
     if (targetCalories < minimumSafetyCalories) {
       targetCalories = bmr;
@@ -109,7 +124,6 @@ export const calculateWeightLossReport = (userData: UserData): WeightLossReportD
   let isWarning = false;
   let warningMsg = "";
 
-  // 안전 장치 경고 문구
   if (tdee - dailyDeficitNeeded < bmr * 0.9) {
     isWarning = true;
     warningMsg = "⚠️ 설정하신 기간이 너무 짧아 건강한 감량이 어렵습니다. 기간을 늘리는 것을 권장합니다.";

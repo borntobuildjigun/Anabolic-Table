@@ -1,6 +1,6 @@
 import React, { useContext, useMemo } from 'react';
 import { AppContext } from '../App';
-import { calculateMacros, calculateWaterIntake } from '../utils/calculations';
+import { calculateMacros, calculateWaterIntake, getFormulaName } from '../utils/calculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Droplets, ArrowLeft } from 'lucide-react';
 
@@ -135,6 +135,13 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 공식 정보 표시 */}
+      <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', opacity: 0.8 }}>
+          현재 <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>{getFormulaName(userData)}</span> 공식에 의해 설계된 식단입니다.
+        </p>
       </div>
     </div>
   );

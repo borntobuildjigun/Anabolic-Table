@@ -89,7 +89,6 @@ button {
   padding: 1.5rem;
   margin-bottom: 1rem;
   border: 1px solid var(--border-color);
-  /* 불안정한 content-visibility 제거 */
   overflow: hidden;
 }
 
@@ -105,4 +104,50 @@ button {
   font-weight: 400;
   color: var(--text-secondary);
   margin-left: 0.25rem;
+}
+
+/* Tooltip Styles */
+.tooltip-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: 240px;
+  background-color: var(--bg-tertiary);
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 10px;
+  position: absolute;
+  z-index: 100;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s, visibility 0.3s;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border: 1px solid var(--accent-primary);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  pointer-events: none;
+  font-weight: normal;
+}
+
+.tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--accent-primary) transparent transparent transparent;
 }

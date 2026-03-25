@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { AppContext } from '../App';
+import { Info } from 'lucide-react';
 
 const Onboarding: React.FC = () => {
   const context = useContext(AppContext);
@@ -19,6 +20,7 @@ const Onboarding: React.FC = () => {
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (value === '' || Number(value) === 0) {
+      if (name === 'bodyFat') return; // 체지방은 0이 허용됨
       const defaults: Record<string, number> = { weight: 70, targetWeight: 70, height: 175, birthYear: 1995, bodyFat: 15, targetWeeks: 8 };
       setUserData({ ...userData, [name]: defaults[name] });
     }
@@ -28,6 +30,8 @@ const Onboarding: React.FC = () => {
     e.preventDefault();
     setStep(2);
   };
+
+  const isBodyFatUnknown = userData.bodyFat === 0;
 
   return (
     <div className="card" style={{ animation: 'fadeIn 0.5s ease' }}>
@@ -72,8 +76,45 @@ const Onboarding: React.FC = () => {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>체지방률 (%)</label>
-            <input type="number" inputMode="numeric" name="bodyFat" value={userData.bodyFat || ''} onChange={handleNumberChange} onBlur={handleBlur} placeholder="15" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'white' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.5rem' }}>
+              <label style={{ color: 'var(--text-secondary)', margin: 0 }}>체지방률 (%)</label>
+              <div className="tooltip-container">
+                <Info size={14} style={{ color: 'var(--accent-primary)', cursor: 'help' }} />
+                <span className="tooltip-text">
+                  {!isBodyFatUnknown 
+                    ? "근육량을 고려한 전문가용 Katch-McArdle 공식이 적용되어 더 정밀한 식단이 제공됩니다." 
+                    : "표준 데이터 기반의 Mifflin-St Jeor 공식으로 식단이 구성됩니다."}
+                </span>
+              </div>
+            </div>
+            <input 
+              type="number" 
+              inputMode="numeric" 
+              name="bodyFat" 
+              value={isBodyFatUnknown ? '' : (userData.bodyFat || '')} 
+              onChange={handleNumberChange} 
+              onBlur={handleBlur} 
+              placeholder={isBodyFatUnknown ? "선택 안 함" : "15"} 
+              disabled={isBodyFatUnknown}
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem', 
+                borderRadius: '8px', 
+                background: isBodyFatUnknown ? 'transparent' : 'var(--bg-tertiary)', 
+                border: '1px solid var(--border-color)', 
+                color: 'white',
+                opacity: isBodyFatUnknown ? 0.5 : 1
+              }} 
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={isBodyFatUnknown} 
+                onChange={(e) => setUserData({ ...userData, bodyFat: e.target.checked ? 0 : 15 })}
+                style={{ cursor: 'pointer' }}
+              />
+              모름 / 건너뛰기
+            </label>
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-secondary)', fontWeight: 'bold' }}>목표 기간 (주)</label>
