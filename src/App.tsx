@@ -1,12 +1,14 @@
 import React, { createContext, useState, useEffect } from 'react';
 import Onboarding from './components/Onboarding';
 import GoalSelection from './components/GoalSelection';
+import WorkoutIntensity from './components/WorkoutIntensity';
 import Dashboard from './components/Dashboard';
 import IngredientPicker from './components/IngredientPicker';
 import MealSchedule from './components/MealSchedule';
 import WeightLossReport from './components/WeightLossReport';
 
 export type UserGoal = 'BULK' | 'LEAN' | 'CUT';
+export type WorkoutIntensityType = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface UserData {
   weight: number;
@@ -16,11 +18,12 @@ export interface UserData {
   gender: 'MALE' | 'FEMALE';
   bodyFat: number;
   goal: UserGoal;
+  workoutIntensity: WorkoutIntensityType; // 추가
   activityLevel: number;
   workoutTime: string;
   isRestDay: boolean;
   isReadyMealMode: boolean;
-  targetWeeks: number; // 추가: 목표 감량 기간(주)
+  targetWeeks: number;
   selectedIngredients: {
     carbs: string[];
     protein: string[];
@@ -39,88 +42,55 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const INITIAL_DATA: UserData = {
-  weight: 70,
-  targetWeight: 65,
-  height: 175,
-  birthYear: 1995,
-  gender: 'MALE',
-  bodyFat: 15,
-  goal: 'CUT',
-  activityLevel: 1.55,
-  workoutTime: '14:00',
-  isRestDay: false,
-  isReadyMealMode: false,
-  targetWeeks: 8, // 기본 8주
-  selectedIngredients: {
-    carbs: ['현미밥'],
-    protein: ['닭가슴살'],
-    fats: ['아몬드'],
-  },
-  mealCount: 4,
-  mealsStatus: [false, false, false, false],
-};
-
 const App: React.FC = () => {
   const [userData, setUserData] = useState<UserData>(() => {
-    try {
-      const saved = localStorage.getItem('anabolic_user_data');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...INITIAL_DATA, ...parsed };
-      }
-    } catch (e) {
-      console.error("Storage Error:", e);
-    }
-    return INITIAL_DATA;
+    const saved = localStorage.getItem('anabolic_user_data');
+    return saved ? JSON.parse(saved) : {
+      weight: 70,
+      targetWeight: 70,
+      height: 175,
+      birthYear: 1995,
+      gender: 'MALE',
+      bodyFat: 15,
+      goal: 'LEAN',
+      workoutIntensity: 'MEDIUM',
+      activityLevel: 1.55,
+      workoutTime: '14:00',
+      isRestDay: false,
+      isReadyMealMode: false,
+      targetWeeks: 8,
+      selectedIngredients: { carbs: [], protein: [], fats: [] },
+      mealCount: 4,
+      mealsStatus: [false, false, false, false],
+    };
   });
 
-  const [step, setStep] = useState(() => {
-    const saved = localStorage.getItem('anabolic_step');
-    return saved ? parseInt(saved) : 1;
-  });
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
     localStorage.setItem('anabolic_user_data', JSON.stringify(userData));
-    localStorage.setItem('anabolic_step', step.toString());
-  }, [userData, step]);
+  }, [userData]);
 
   return (
     <AppContext.Provider value={{ userData, setUserData, step, setStep }}>
-      <div className="app-container">
-        <header style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <h1 style={{ color: 'var(--accent-primary)', fontSize: '2rem' }}>ANABOLIC TABLE</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Professional Meal Planner</p>
+      <div style={{ paddingBottom: '2rem' }}>
+        <header style={{ textAlign: 'center', marginBottom: '2rem', marginTop: '1rem' }}>
+          <h1 style={{ fontSize: '2rem', color: 'var(--accent-primary)', textTransform: 'uppercase', fontStyle: 'italic' }}>
+            ANABOLIC TABLE
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Professional Bodybuilding Meal Planner</p>
         </header>
 
-        <main style={{ minHeight: '600px' }}>
-          {step === 1 && <Onboarding />}
-          {step === 2 && <GoalSelection />}
-          {step === 3 && <IngredientPicker />}
-          {step === 4 && (
-            <>
-              <Dashboard />
-              <WeightLossReport />
-              <MealSchedule />
-            </>
-          )}
-        </main>
-        
-        {step > 1 && (
-          <button 
-            onClick={() => setStep(1)}
-            style={{ 
-              marginTop: '2rem', 
-              background: 'none', 
-              color: 'var(--text-muted)', 
-              textDecoration: 'underline',
-              width: '100%',
-              textAlign: 'center',
-              padding: '1rem'
-            }}
-          >
-            데이터 수정하러 가기
-          </button>
+        {step === 1 && <Onboarding />}
+        {step === 2 && <GoalSelection />}
+        {step === 3 && <WorkoutIntensity />}
+        {step === 4 && <IngredientPicker />}
+        {step === 5 && <MealSchedule />}
+        {step === 6 && (
+          <>
+            <Dashboard />
+            <WeightLossReport />
+          </>
         )}
       </div>
     </AppContext.Provider>

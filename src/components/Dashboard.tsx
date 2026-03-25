@@ -1,8 +1,8 @@
 import React, { useContext, useMemo } from 'react';
 import { AppContext } from '../App';
-import { calculateMacros, calculateWaterIntake, getFormulaName } from '../utils/calculations';
+import { calculateMacros, calculateWaterIntake, getFormulaName, getCarbCycleCoaching } from '../utils/calculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Droplets, ArrowLeft } from 'lucide-react';
+import { Droplets, ArrowLeft, Zap } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const context = useContext(AppContext);
@@ -11,6 +11,7 @@ const Dashboard: React.FC = () => {
   const { userData, setUserData, setStep } = context;
   const macros = useMemo(() => calculateMacros(userData), [userData]);
   const waterIntake = useMemo(() => calculateWaterIntake(userData.weight), [userData.weight]);
+  const coachingMsg = useMemo(() => getCarbCycleCoaching(userData), [userData]);
 
   const chartData = [
     { name: '탄수화물', value: macros.carbs * 4, color: 'var(--accent-primary)', grams: macros.carbs },
@@ -18,10 +19,16 @@ const Dashboard: React.FC = () => {
     { name: '지방', value: macros.fat * 9, color: 'var(--accent-secondary)', grams: macros.fat },
   ];
 
+  const cycleInfo = {
+    HIGH: { label: 'HIGH CARB', color: 'var(--danger)', bg: 'rgba(255, 68, 68, 0.1)' },
+    MEDIUM: { label: 'MEDIUM CARB', color: 'var(--accent-primary)', bg: 'rgba(204, 255, 0, 0.1)' },
+    LOW: { label: 'LOW CARB', color: 'var(--text-secondary)', bg: 'rgba(160, 160, 160, 0.1)' },
+  }[userData.workoutIntensity || 'MEDIUM'];
+
   return (
     <div style={{ animation: 'fadeIn 0.5s ease' }}>
       <button 
-        onClick={() => setStep(1)}
+        onClick={() => setStep(3)}
         style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -29,30 +36,48 @@ const Dashboard: React.FC = () => {
           background: 'none', 
           color: 'var(--accent-primary)', 
           fontWeight: 'bold',
-          marginBottom: '1.5rem',
+          marginBottom: '1rem',
           padding: '0.5rem 0',
           cursor: 'pointer'
         }}
       >
-        <ArrowLeft size={18} /> 처음부터 다시 설정하기
+        <ArrowLeft size={18} /> 운동 강도 다시 설정하기
       </button>
 
-      <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        매크로 분석 대시보드
-        {userData.goal === 'CUT' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--bg-secondary)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>식단 기간: <strong>{userData.targetWeeks}주</strong></span>
-            <input 
-              type="range" 
-              min="2" 
-              max="24" 
-              value={userData.targetWeeks} 
-              onChange={(e) => setUserData({ ...userData, targetWeeks: parseInt(e.target.value) })}
-              style={{ width: '100px', accentColor: 'var(--accent-primary)' }}
-            />
-          </div>
-        )}
-      </h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <h2 style={{ borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem', margin: 0 }}>
+          매크로 분석 대시보드
+        </h2>
+        <div style={{ 
+          background: cycleInfo.bg, 
+          color: cycleInfo.color, 
+          padding: '0.4rem 0.8rem', 
+          borderRadius: '20px', 
+          fontSize: '0.75rem', 
+          fontWeight: '900',
+          border: `1px solid ${cycleInfo.color}40`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}>
+          <Zap size={12} fill={cycleInfo.color} /> {cycleInfo.label}
+        </div>
+      </div>
+
+      {/* 코칭 문구 카드 */}
+      <div className="card" style={{ 
+        border: `1px solid ${cycleInfo.color}30`, 
+        background: `linear-gradient(to right, ${cycleInfo.bg}, transparent)`,
+        marginBottom: '1.5rem',
+        padding: '1rem 1.25rem'
+      }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1.25rem' }}>💡</span>
+          <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.5', color: 'white', fontWeight: '500' }}>
+            {coachingMsg}
+          </p>
+        </div>
+      </div>
       
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
@@ -91,31 +116,19 @@ const Dashboard: React.FC = () => {
           <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(204, 255, 0, 0.05)', borderRadius: '12px', border: '1px solid rgba(204, 255, 0, 0.2)' }}>
             <p style={{ color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 'bold' }}>탄수화물</p>
             <div style={{ fontWeight: '900', fontSize: '1.25rem' }}>{macros.carbs}g</div>
-            <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>글리코겐 & 에너지</p>
+            <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>에너지원</p>
           </div>
           <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(0, 204, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)' }}>
             <p style={{ color: '#00ccff', fontSize: '0.75rem', fontWeight: 'bold' }}>단백질</p>
             <div style={{ fontWeight: '900', fontSize: '1.25rem' }}>{macros.protein}g</div>
-            <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>근합성 & 회복</p>
+            <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>근합성</p>
           </div>
           <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(255, 102, 0, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 102, 0, 0.2)' }}>
             <p style={{ color: 'var(--accent-secondary)', fontSize: '0.75rem', fontWeight: 'bold' }}>지방</p>
             <div style={{ fontWeight: '900', fontSize: '1.25rem' }}>{macros.fat}g</div>
-            <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>호르몬 조절</p>
+            <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>호르몬</p>
           </div>
         </div>
-      </div>
-
-      <div className="card" style={{ padding: '1rem' }}>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-          💡 <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>보디빌딩 팁:</span> {
-            userData.goal === 'BULK' 
-              ? '벌크업 시기에는 탄수화물을 충분히 섭취하여 근육 내 글리코겐 저장량을 최대화하고 강도 높은 훈련을 지속하세요.'
-              : userData.goal === 'CUT'
-              ? '커팅 시기에는 단백질 섭취량을 유지하여 근손실을 방지하고, 지방 대사를 위해 적절한 활동량을 유지하는 것이 중요합니다.'
-              : '린매스업은 정교한 칼로리 조절이 필요합니다. 체중 변화를 주 단위로 모니터링하며 섭취량을 미세 조정하세요.'
-          }
-        </p>
       </div>
 
       {/* 수분 섭취 가이드 */}
@@ -137,10 +150,9 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 공식 정보 표시 */}
       <div style={{ textAlign: 'center', marginTop: '1.5rem', marginBottom: '1.5rem' }}>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', opacity: 0.8 }}>
-          현재 <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>{getFormulaName(userData)}</span> 공식에 의해 설계된 식단입니다.
+          현재 <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>{getFormulaName(userData)}</span> 공식 및 탄수화물 사이클링이 적용된 데이터입니다.
         </p>
       </div>
     </div>

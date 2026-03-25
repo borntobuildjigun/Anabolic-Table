@@ -1,6 +1,8 @@
 import { UserData } from '../App';
 import { INGREDIENTS } from './ingredients';
 
+export type CarbCycle = 'HIGH' | 'MEDIUM' | 'LOW';
+
 export interface Macros {
   calories: number;
   protein: number;
@@ -41,22 +43,15 @@ const DEFAULT_BACKUP = {
   fats: '아몬드'
 };
 
-/**
- * 지능형 공식 선택 로직:
- * - 체지방률(bodyFat)이 0보다 크면: Katch-McArdle (제지방량 기반)
- * - 체지방률이 없으면: Mifflin-St Jeor (기존 표준 방식)
- */
 export const getBMR = (userData: UserData): number => {
   if (!userData) return 0;
   const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE', bodyFat = 0 } = userData;
 
   if (bodyFat > 0) {
-    // Katch-McArdle: BMR = 370 + (21.6 * LBM)
     const lbm = weight * (1 - bodyFat / 100);
     return 370 + (21.6 * lbm);
   }
 
-  // Mifflin-St Jeor: 표준 공식
   const age = 2026 - birthYear;
   let bmr = 10 * weight + 6.25 * height - 5 * age;
   return gender === 'MALE' ? bmr + 5 : bmr - 161;
@@ -71,13 +66,17 @@ export const getTDEE = (userData: UserData): number => {
   return bmr * (userData.activityLevel || 1.2);
 };
 
+/**
+ * 탄수화물 사이클링 기반 매크로 계산 로직
+ */
 export const calculateMacros = (userData: UserData): Macros => {
   const tdee = getTDEE(userData);
   const bmr = getBMR(userData);
-  const { weight = 0, targetWeight = 0, targetWeeks = 8, goal = 'BULK' } = userData;
+  const { weight = 0, targetWeight = 0, targetWeeks = 8, goal = 'BULK', workoutIntensity = 'MEDIUM' } = userData;
   
   let targetCalories = tdee;
 
+  // 1. 기본 목표 기반 칼로리 설정
   if (goal === 'BULK') {
     targetCalories += 400;
   } else if (goal === 'LEAN') {
@@ -86,7 +85,6 @@ export const calculateMacros = (userData: UserData): Macros => {
     const weightToLose = Math.max(0, weight - targetWeight);
     const totalDeficitKcal = weightToLose * 7700;
     const dailyDeficitNeeded = totalDeficitKcal / (targetWeeks * 7);
-    
     targetCalories = tdee - dailyDeficitNeeded;
     
     const minimumSafetyCalories = bmr * 0.9;
@@ -95,17 +93,46 @@ export const calculateMacros = (userData: UserData): Macros => {
     }
   }
 
+  // 2. 탄수화물 사이클링(Carb Cycling) 조정
+  let finalCalories = targetCalories;
+  let carbRatio = 0.45; // 기본 탄수화물 비율
+  let fatRatio = 0.25;
+
+  if (workoutIntensity === 'HIGH') {
+    finalCalories *= 1.1; // 칼로리 10% 증량
+    carbRatio = 0.55; // 탄수화물 비중 대폭 강화
+  } else if (workoutIntensity === 'LOW') {
+    carbRatio = 0.25; // 탄수화물 비중 절반으로 축소
+    fatRatio = 0.35; // 부족한 에너지를 지방으로 보충
+  }
+
+  // 3. 최종 영양소 배분
   const proteinG = weight * 2.0;
   const proteinKcal = proteinG * 4;
-  let fatKcal = Math.max(0, targetCalories * 0.22);
-  let carbKcal = Math.max(0, targetCalories - proteinKcal - fatKcal);
+  
+  // 탄수화물과 지방 계산 (나머지 칼로리 내에서 비율 조정)
+  const remainingKcal = finalCalories - proteinKcal;
+  let carbKcal = remainingKcal * (carbRatio / (carbRatio + fatRatio));
+  let fatKcal = remainingKcal - carbKcal;
 
   return {
-    calories: Math.round(targetCalories),
+    calories: Math.round(finalCalories),
     protein: Math.round(proteinG),
     carbs: Math.max(0, Math.round(carbKcal / 4)),
-    fat: Math.round(fatKcal / 9),
+    fat: Math.max(0, Math.round(fatKcal / 9)),
   };
+};
+
+export const getCarbCycleCoaching = (userData: UserData): string => {
+  const intensity = userData.workoutIntensity || 'MEDIUM';
+  switch (intensity) {
+    case 'HIGH':
+      return "오늘은 하체나 등 같은 대근육 운동 날이군요! 퍼포먼스를 위해 탄수화물을 전략적으로 증량했습니다. 🔥";
+    case 'LOW':
+      return "오늘은 휴식 또는 유산소 날입니다. 인슐린 민감도를 높이기 위해 탄수화물을 줄이고 건강한 지방을 배치했습니다. 🧘";
+    default:
+      return "일반적인 웨이트 트레이닝에 최적화된 표준 매크로입니다. 꾸준함이 정답입니다. 💪";
+  }
 };
 
 export const calculateWeightLossReport = (userData: UserData): WeightLossReportData => {
@@ -154,7 +181,7 @@ export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
   let otherCPerMeal = 0;
   let fuelIndices: number[] = [];
 
-  if (isRestDay) {
+  if (isRestDay || userData.workoutIntensity === 'LOW') {
     fuelCPerMeal = Math.round(dailyTotal.carbs / mealCount);
     otherCPerMeal = fuelCPerMeal;
   } else {
