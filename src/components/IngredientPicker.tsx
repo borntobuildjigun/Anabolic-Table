@@ -1,9 +1,12 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
 import { INGREDIENTS } from '../utils/ingredients';
+import { Loader2 } from 'lucide-react';
 
 const IngredientPicker: React.FC = () => {
   const context = useContext(AppContext);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   if (!context) return null;
 
   const { userData, setUserData, setStep } = context;
@@ -21,6 +24,13 @@ const IngredientPicker: React.FC = () => {
         [category]: updated
       }
     });
+  };
+
+  const handleGeneratePlan = () => {
+    setIsGenerating(true);
+    // 상태 저장 및 즉시 다음 단계(식단표)로 이동
+    // 복잡한 계산은 MealSchedule 페이지 진입 후에 처리하도록 위임
+    setStep(5);
   };
 
   return (
@@ -44,7 +54,7 @@ const IngredientPicker: React.FC = () => {
                 border: '1px solid var(--border-color)',
                 fontWeight: '900',
                 fontSize: '0.9rem',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.1s ease'
               }}
             >
               {item}
@@ -68,7 +78,7 @@ const IngredientPicker: React.FC = () => {
                 border: '1px solid var(--border-color)',
                 fontWeight: '900',
                 fontSize: '0.9rem',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.1s ease'
               }}
             >
               {item}
@@ -92,7 +102,7 @@ const IngredientPicker: React.FC = () => {
                 border: '1px solid var(--border-color)',
                 fontWeight: '900',
                 fontSize: '0.9rem',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.1s ease'
               }}
             >
               {item}
@@ -102,20 +112,32 @@ const IngredientPicker: React.FC = () => {
       </div>
 
       <button 
-        onClick={() => setStep(4)}
+        disabled={isGenerating}
+        onClick={handleGeneratePlan}
         style={{ 
           width: '100%', 
           padding: '1.25rem', 
           borderRadius: '12px', 
-          background: 'var(--accent-primary)', 
-          color: 'black', 
+          background: isGenerating ? 'var(--bg-tertiary)' : 'var(--accent-primary)', 
+          color: isGenerating ? 'var(--text-muted)' : 'black', 
           fontWeight: '900',
           fontSize: '1.2rem',
           marginTop: '1.5rem',
-          boxShadow: '0 4px 20px rgba(204, 255, 0, 0.3)'
+          boxShadow: isGenerating ? 'none' : '0 4px 20px rgba(204, 255, 0, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          cursor: isGenerating ? 'not-allowed' : 'pointer'
         }}
       >
-        최적화된 식단 생성하기
+        {isGenerating ? (
+          <>
+            <Loader2 className="animate-spin" size={24} /> 생성 중...
+          </>
+        ) : (
+          '최적화된 식단 생성하기'
+        )}
       </button>
     </div>
   );

@@ -1,27 +1,49 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AppContext, WorkoutIntensityType } from '../App';
-import { generateOptimizedMealPlan, calculateMacros, getAIRecommendation } from '../utils/calculations';
-import { CheckCircle2, Circle, Lightbulb, Zap, Package, Clock, Info, Flame, Dumbbell, Coffee } from 'lucide-react';
+import { generateOptimizedMealPlan, calculateMacros, getAIRecommendation, MealPlan, Macros } from '../utils/calculations';
+import { CheckCircle2, Circle, Lightbulb, Zap, Clock, Info, Flame, Dumbbell, Coffee, Loader2 } from 'lucide-react';
 
 const MealSchedule: React.FC = () => {
   const context = useContext(AppContext);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [mealPlan, setMealPlan] = useState<MealPlan[]>([]);
+  const [totalMacros, setTotalMacros] = useState<Macros | null>(null);
+  const [recommendations, setRecommendations] = useState<string[]>([]);
 
   if (!context) return null;
   const { userData, setUserData } = context;
 
-  // 최적화: userData가 변경될 때만 식단 재계산 (실시간 그람수 변경)
-  const mealPlan = useMemo(() => generateOptimizedMealPlan(userData), [userData]);
-  const totalMacros = useMemo(() => calculateMacros(userData), [userData]);
-  const recommendations = useMemo(() => getAIRecommendation(totalMacros, userData), [totalMacros, userData]);
+  // 비동기 계산 로직: 브라우저 멈춤 방지
+  useEffect(() => {
+    setIsPageLoading(true);
+    
+    // 계산을 비동기적으로 처리하여 UI 스레드를 확보함
+    const timer = setTimeout(() => {
+      try {
+        const plan = generateOptimizedMealPlan(userData);
+        const macros = calculateMacros(userData);
+        const recs = getAIRecommendation(macros, userData);
+        
+        setMealPlan(plan);
+        setTotalMacros(macros);
+        setRecommendations(recs);
+      } catch (error) {
+        console.error("Meal Calculation Error:", error);
+      } finally {
+        setIsPageLoading(false);
+      }
+    }, 400); // 페이지 전환 애니메이션을 위한 충분한 여유
+
+    return () => clearTimeout(timer);
+  }, [userData]);
 
   const toggleMealStatus = (index: number) => {
     const newStatus = [...(userData.mealsStatus || [])];
     newStatus[index] = !newStatus[index];
-    setUserData({ ...userData, mealsStatus: newStatus });
+    setUserData(prev => ({ ...prev, mealsStatus: newStatus }));
   };
 
   const setIntensity = (intensity: WorkoutIntensityType) => {
-    // 실시간으로 숫자만 변경되도록 상태 업데이트
     setUserData(prev => ({ ...prev, workoutIntensity: intensity }));
   };
 
@@ -31,13 +53,28 @@ const MealSchedule: React.FC = () => {
     { id: 'LOW', label: 'LOW', icon: Coffee, color: 'var(--text-secondary)' },
   ];
 
+  if (isPageLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
+        <Loader2 className="animate-spin" size={60} color="var(--accent-primary)" />
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem', letterSpacing: '1px' }}>ANABOLIC ENGINE</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
+            개인별 신체 데이터와 선택하신 식재료를<br/>
+            바탕으로 최적의 영양 비율을 계산 중입니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ marginTop: '1.5rem', animation: 'fadeIn 0.4s ease' }}>
+    <div style={{ marginTop: '1.5rem', animation: 'fadeIn 0.5s ease' }}>
       <h2 style={{ marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)', paddingLeft: '0.75rem' }}>
         맞춤형 아나볼릭 식단표
       </h2>
 
-      {/* 실시간 탄수화물 전략 컨트롤러 (New) */}
+      {/* 실시간 탄수화물 전략 컨트롤러 */}
       <div className="card" style={{ padding: '1rem', marginBottom: '1.5rem', border: '1px solid var(--border-color)' }}>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Zap size={14} fill="var(--accent-primary)" color="var(--accent-primary)" /> 오늘의 탄수화물 전략 선택
@@ -69,20 +106,20 @@ const MealSchedule: React.FC = () => {
         </div>
       </div>
 
-      {/* 상세 설정 (아코디언 형태 대신 깔끔한 그리드) */}
+      {/* 상세 설정 그리드 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <div className="card" style={{ padding: '0.75rem', margin: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>모드 선택</div>
            <div style={{ display: 'flex', gap: '4px' }}>
-              <button onClick={() => setUserData({...userData, isReadyMealMode: false})} style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem', borderRadius: '4px', background: !userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: !userData.isReadyMealMode ? 'black' : 'white', fontWeight: 'bold' }}>원물</button>
-              <button onClick={() => setUserData({...userData, isReadyMealMode: true})} style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem', borderRadius: '4px', background: userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: userData.isReadyMealMode ? 'black' : 'white', fontWeight: 'bold' }}>간편식</button>
+              <button onClick={() => setUserData(p => ({...p, isReadyMealMode: false}))} style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem', borderRadius: '4px', background: !userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: !userData.isReadyMealMode ? 'black' : 'white', fontWeight: 'bold' }}>원물</button>
+              <button onClick={() => setUserData(p => ({...p, isReadyMealMode: true}))} style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem', borderRadius: '4px', background: userData.isReadyMealMode ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: userData.isReadyMealMode ? 'black' : 'white', fontWeight: 'bold' }}>간편식</button>
            </div>
         </div>
         <div className="card" style={{ padding: '0.75rem', margin: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>끼니 횟수</div>
            <div style={{ display: 'flex', gap: '4px' }}>
               {[3, 4, 5].map(c => (
-                <button key={c} onClick={() => setUserData({...userData, mealCount: c})} style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem', borderRadius: '4px', background: userData.mealCount === c ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: userData.mealCount === c ? 'black' : 'white', fontWeight: 'bold' }}>{c}</button>
+                <button key={c} onClick={() => setUserData(p => ({...p, mealCount: c}))} style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem', borderRadius: '4px', background: userData.mealCount === c ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: userData.mealCount === c ? 'black' : 'white', fontWeight: 'bold' }}>{c}</button>
               ))}
            </div>
         </div>
@@ -96,7 +133,7 @@ const MealSchedule: React.FC = () => {
             <input 
               type="time" 
               value={userData.workoutTime || "14:00"}
-              onChange={(e) => setUserData({ ...userData, workoutTime: e.target.value })}
+              onChange={(e) => setUserData(p => ({ ...p, workoutTime: e.target.value }))}
               style={{ background: 'var(--bg-primary)', color: 'white', border: '1px solid var(--border-color)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem' }}
             />
           </div>
