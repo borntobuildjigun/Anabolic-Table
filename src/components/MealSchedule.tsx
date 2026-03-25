@@ -112,9 +112,31 @@ const MealSchedule: React.FC = () => {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {meal.foods?.map((food, idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ background: idx === 0 ? 'var(--accent-primary)' : idx === 1 ? '#00ccff' : 'var(--accent-secondary)', color: 'black', padding: '0.4rem 0.8rem', borderRadius: '6px', fontWeight: '900', minWidth: '95px', textAlign: 'center' }}>{food.isReady ? food.readyValue : food.weight}{food.unit}</div>
-                        <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>{food.name}</div>
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <div style={{ 
+                          background: idx === 0 ? 'var(--accent-primary)' : idx === 1 ? '#00ccff' : 'var(--accent-secondary)', 
+                          color: 'black', 
+                          padding: '0.4rem 0.6rem', 
+                          borderRadius: '6px', 
+                          fontWeight: '900', 
+                          minWidth: '85px', 
+                          width: 'fit-content',
+                          textAlign: 'center',
+                          flexShrink: 0
+                        }}>
+                          {food.isReady ? food.readyValue : food.weight}{food.unit}
+                        </div>
+                        <div style={{ 
+                          fontWeight: '700', 
+                          fontSize: '1.05rem',
+                          wordBreak: 'keep-all',
+                          overflowWrap: 'anywhere',
+                          flex: 1,
+                          minWidth: '120px',
+                          lineHeight: '1.3'
+                        }}>
+                          {food.name}
+                        </div>
                       </div>
                     ))}
                   </div>
