@@ -34,7 +34,7 @@ const GoalSelection: React.FC = () => {
 
   const handleSelect = (goalId: UserGoal) => {
     setUserData({ ...userData, goal: goalId });
-    setStep(3);
+    setStep(4);
   };
 
   return (

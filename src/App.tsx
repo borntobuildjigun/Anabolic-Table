@@ -83,7 +83,6 @@ const App: React.FC = () => {
 
         {step === 1 && <Onboarding />}
         {step === 2 && <GoalSelection />}
-        {step === 3 && <WorkoutIntensity />}
         {step === 4 && <IngredientPicker />}
         {step === 5 && <MealSchedule />}
         {step === 6 && (
