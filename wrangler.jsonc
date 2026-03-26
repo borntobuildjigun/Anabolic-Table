@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "anabolictable",
+  "name": "anabolictable2",
   "compatibility_date": "2026-03-22",
   "assets": {
     "directory": "./dist"
