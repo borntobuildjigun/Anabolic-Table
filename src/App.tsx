@@ -1,11 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import Onboarding from './components/Onboarding';
-import GoalSelection from './components/GoalSelection';
-import WorkoutIntensity from './components/WorkoutIntensity';
 import Dashboard from './components/Dashboard';
-import IngredientPicker from './components/IngredientPicker';
 import MealSchedule from './components/MealSchedule';
-import WeightLossReport from './components/WeightLossReport';
 
 export type UserGoal = 'BULK' | 'LEAN' | 'CUT';
 export type WorkoutIntensityType = 'HIGH' | 'MEDIUM' | 'LOW';
@@ -18,7 +14,7 @@ export interface UserData {
   gender: 'MALE' | 'FEMALE';
   bodyFat: number;
   goal: UserGoal;
-  workoutIntensity: WorkoutIntensityType; // 추가
+  workoutIntensity: WorkoutIntensityType;
   activityLevel: number;
   workoutTime: string;
   isRestDay: boolean;
@@ -49,7 +45,7 @@ const App: React.FC = () => {
       weight: 70,
       targetWeight: 70,
       height: 175,
-      birthYear: 1995,
+      birthYear: 1996,
       gender: 'MALE',
       bodyFat: 15,
       goal: 'LEAN',
@@ -82,14 +78,11 @@ const App: React.FC = () => {
         </header>
 
         {step === 1 && <Onboarding />}
-        {step === 2 && <GoalSelection />}
-        {step === 4 && <IngredientPicker />}
-        {step === 5 && <MealSchedule />}
         {step === 6 && (
-          <>
+          <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1rem' }}>
             <Dashboard />
-            <WeightLossReport />
-          </>
+            <MealSchedule />
+          </div>
         )}
       </div>
     </AppContext.Provider>
