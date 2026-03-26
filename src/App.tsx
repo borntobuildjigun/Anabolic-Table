@@ -5,6 +5,7 @@ import MealSchedule from './components/MealSchedule';
 
 export type UserGoal = 'BULK' | 'LEAN' | 'CUT';
 export type WorkoutIntensityType = 'HIGH' | 'MEDIUM' | 'LOW';
+export type WorkoutTimingType = 'MORNING' | 'AFTERNOON' | 'EVENING' | 'REST';
 
 export interface UserData {
   weight: number;
@@ -15,6 +16,7 @@ export interface UserData {
   bodyFat: number;
   goal: UserGoal;
   workoutIntensity: WorkoutIntensityType;
+  workoutTiming: WorkoutTimingType;
   activityLevel: number;
   workoutTime: string;
   isRestDay: boolean;
@@ -50,6 +52,7 @@ const App: React.FC = () => {
       bodyFat: 15,
       goal: 'LEAN',
       workoutIntensity: 'MEDIUM',
+      workoutTiming: 'AFTERNOON',
       activityLevel: 1.55,
       workoutTime: '14:00',
       isRestDay: false,

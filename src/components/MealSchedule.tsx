@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { AppContext, WorkoutIntensityType } from '../App';
+import { AppContext, WorkoutIntensityType, WorkoutTimingType } from '../App';
 import { generateOptimizedMealPlan, calculateMacros, getAIRecommendation, MealPlan, Macros } from '../utils/calculations';
-import { CheckCircle2, Circle, Lightbulb, Zap, Flame, Dumbbell, Coffee, Loader2, Settings2 } from 'lucide-react';
+import { CheckCircle2, Circle, Lightbulb, Zap, Flame, Dumbbell, Coffee, Loader2, Settings2, Sun, Moon, Sunrise } from 'lucide-react';
 
 const MealSchedule: React.FC = () => {
   const context = useContext(AppContext);
@@ -39,6 +39,13 @@ const MealSchedule: React.FC = () => {
     { id: 'HIGH', label: '높음 (Hard)', icon: Flame },
   ];
 
+  const timingOptions: { id: WorkoutTimingType; label: string; icon: any }[] = [
+    { id: 'MORNING', label: '오전 운동', icon: Sunrise },
+    { id: 'AFTERNOON', label: '오후 운동', icon: Sun },
+    { id: 'EVENING', label: '저녁 운동', icon: Moon },
+    { id: 'REST', label: '휴식 (없음)', icon: Coffee },
+  ];
+
   if (isPageLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '40vh', gap: '1.5rem' }}>
@@ -50,8 +57,9 @@ const MealSchedule: React.FC = () => {
 
   return (
     <div style={{ marginTop: '1rem', animation: 'fadeIn 0.5s ease' }}>
-      {/* 탄수화물 전략 탭 (최상단 배치) */}
-      <div style={{ marginBottom: '1.5rem' }}>
+      {/* 1. 탄수화물 사이클링 전략 (강도) */}
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>훈련 강도 (탄수화물 양)</div>
         <div style={{ display: 'flex', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           {intensityOptions.map((opt) => (
             <button
@@ -63,7 +71,7 @@ const MealSchedule: React.FC = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                padding: '0.85rem 0.5rem',
+                padding: '0.75rem 0.5rem',
                 borderRadius: '8px',
                 background: userData.workoutIntensity === opt.id ? 'var(--accent-primary)' : 'transparent',
                 color: userData.workoutIntensity === opt.id ? 'black' : 'var(--text-secondary)',
@@ -71,10 +79,41 @@ const MealSchedule: React.FC = () => {
                 fontWeight: '900',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                fontSize: '0.85rem'
+                fontSize: '0.8rem'
               }}
             >
-              <opt.icon size={16} />
+              <opt.icon size={14} />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2. 운동 시간대 선택 (탄수화물 타이밍) */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>운동 시간대 (탄수화물 타이밍)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+          {timingOptions.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setUserData(p => ({ ...p, workoutTiming: opt.id }))}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                background: userData.workoutTiming === opt.id ? 'var(--bg-tertiary)' : 'transparent',
+                color: userData.workoutTiming === opt.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                border: userData.workoutTiming === opt.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontSize: '0.8rem'
+              }}
+            >
+              <opt.icon size={14} />
               {opt.label}
             </button>
           ))}
@@ -117,7 +156,9 @@ const MealSchedule: React.FC = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {mealPlan.map((meal) => {
           const isDone = userData.mealsStatus?.[meal.id] || false;
-          const isFuel = meal.macros?.isWorkoutFuel;
+          const label = meal.label;
+          const isFuel = label === 'PRE-WO' || label === 'POST-WO' || label === 'PRE/POST-WO';
+          
           return (
             <div key={meal.id} style={{ 
               position: 'relative',
@@ -131,11 +172,11 @@ const MealSchedule: React.FC = () => {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '900', color: isFuel ? 'var(--accent-primary)' : 'var(--text-muted)', letterSpacing: '1px' }}>
-                      {isFuel ? 'PRE/POST WORKOUT' : `MEAL ${meal.id + 1}`}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: '900', color: isFuel ? 'var(--accent-primary)' : 'var(--text-muted)', letterSpacing: '1px' }}>
+                      {label || `MEAL ${meal.id + 1}`}
                     </span>
-                    {isFuel && <Zap size={12} fill="var(--accent-primary)" color="var(--accent-primary)" />}
+                    {isFuel && <Zap size={10} fill="var(--accent-primary)" color="var(--accent-primary)" />}
                   </div>
                   <h4 style={{ margin: 0, fontSize: '1.1rem', color: 'white' }}>{meal.mealName}</h4>
                 </div>

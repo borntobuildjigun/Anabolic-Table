@@ -48,6 +48,7 @@ const Onboarding: React.FC = () => {
       ...prev,
       goal: prev.weight > prev.targetWeight ? 'CUT' : 'BULK',
       workoutIntensity: 'MEDIUM',
+      workoutTiming: 'AFTERNOON',
       activityLevel: 1.55,
       mealCount: 4
     }));

@@ -35,6 +35,7 @@ export interface MealPlan {
   mealName: string;
   macros: Macros;
   foods: FoodItem[];
+  label?: string;
 }
 
 const DEFAULT_BACKUP = {
@@ -45,7 +46,7 @@ const DEFAULT_BACKUP = {
 
 export const getBMR = (userData: UserData): number => {
   if (!userData) return 0;
-  const { weight = 0, height = 0, birthYear = 1995, gender = 'MALE', bodyFat = 0 } = userData;
+  const { weight = 0, height = 0, birthYear = 1996, gender = 'MALE', bodyFat = 0 } = userData;
 
   if (bodyFat > 0) {
     const lbm = weight * (1 - bodyFat / 100);
@@ -63,7 +64,13 @@ export const getFormulaName = (userData: UserData): string => {
 
 export const getTDEE = (userData: UserData): number => {
   const bmr = getBMR(userData);
-  return bmr * (userData.activityLevel || 1.2);
+  const activityMap: Record<string, number> = {
+    'LOW': 1.2,
+    'MEDIUM': 1.55,
+    'HIGH': 1.75
+  };
+  const multiplier = activityMap[userData.workoutIntensity] || 1.55;
+  return bmr * multiplier;
 };
 
 /**
@@ -94,23 +101,24 @@ export const calculateMacros = (userData: UserData): Macros => {
   }
 
   // 2. 탄수화물 사이클링(Carb Cycling) 조정
+  // Intensity에 따라 칼로리와 탄수화물 비율을 조절
   let finalCalories = targetCalories;
-  let carbRatio = 0.45; // 기본 탄수화물 비율
+  let carbRatio = 0.45; // 보통 (Medium)
   let fatRatio = 0.25;
 
   if (workoutIntensity === 'HIGH') {
-    finalCalories *= 1.1; // 칼로리 10% 증량
-    carbRatio = 0.55; // 탄수화물 비중 대폭 강화
+    finalCalories = targetCalories * 1.15;
+    carbRatio = 0.6; 
   } else if (workoutIntensity === 'LOW') {
-    carbRatio = 0.25; // 탄수화물 비중 절반으로 축소
-    fatRatio = 0.35; // 부족한 에너지를 지방으로 보충
+    finalCalories = targetCalories * 0.85;
+    carbRatio = 0.2;
+    fatRatio = 0.4;
   }
 
   // 3. 최종 영양소 배분
-  const proteinG = weight * 2.0;
+  const proteinG = weight * 2.2; // 보디빌딩 기준 단백질 상향
   const proteinKcal = proteinG * 4;
   
-  // 탄수화물과 지방 계산 (나머지 칼로리 내에서 비율 조정)
   const remainingKcal = finalCalories - proteinKcal;
   let carbKcal = remainingKcal * (carbRatio / (carbRatio + fatRatio));
   let fatKcal = remainingKcal - carbKcal;
@@ -127,11 +135,11 @@ export const getCarbCycleCoaching = (userData: UserData): string => {
   const intensity = userData.workoutIntensity || 'MEDIUM';
   switch (intensity) {
     case 'HIGH':
-      return "오늘은 하체나 등 같은 대근육 운동 날이군요! 퍼포먼스를 위해 탄수화물을 전략적으로 증량했습니다. 🔥";
+      return "오늘은 고강도 훈련일입니다. 충분한 탄수화물로 글리코겐을 충전하세요! 🔥";
     case 'LOW':
-      return "오늘은 휴식 또는 유산소 날입니다. 인슐린 민감도를 높이기 위해 탄수화물을 줄이고 건강한 지방을 배치했습니다. 🧘";
+      return "오늘은 휴식일입니다. 탄수화물을 줄이고 지방 섭취를 늘려 대사를 조절합니다. 🧘";
     default:
-      return "일반적인 웨이트 트레이닝에 최적화된 표준 매크로입니다. 꾸준함이 정답입니다. 💪";
+      return "표준 매크로 식단입니다. 일정한 영양 공급으로 컨디션을 유지하세요. 💪";
   }
 };
 
@@ -173,28 +181,64 @@ export const calculateWeightLossReport = (userData: UserData): WeightLossReportD
 export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
   if (!userData) return [];
   const dailyTotal = calculateMacros(userData);
-  const { mealCount = 3, workoutTime = "14:00", isRestDay = false, selectedIngredients = { carbs: [], protein: [], fats: [] }, isReadyMealMode = false } = userData;
-  const pPerMeal = Math.round(dailyTotal.protein / (mealCount || 1));
-  const fPerMeal = Math.round(dailyTotal.fat / (mealCount || 1));
+  const { mealCount = 4, workoutTiming = 'AFTERNOON', selectedIngredients = { carbs: [], protein: [], fats: [] }, isReadyMealMode = false } = userData;
   
-  let fuelCPerMeal = 0;
-  let otherCPerMeal = 0;
-  let fuelIndices: number[] = [];
+  const pPerMeal = Math.round(dailyTotal.protein / mealCount);
+  const fPerMeal = Math.round(dailyTotal.fat / mealCount);
+  
+  // 탄수화물 배분 로직 (Carb Timing)
+  let carbDistribution = Array(mealCount).fill(1 / mealCount); // 기본 균등 배분
+  let labels = Array(mealCount).fill('');
 
-  if (isRestDay || userData.workoutIntensity === 'LOW') {
-    fuelCPerMeal = Math.round(dailyTotal.carbs / mealCount);
-    otherCPerMeal = fuelCPerMeal;
+  if (workoutTiming === 'MORNING') {
+    // 오전 운동: 아침(Pre), 점심(Post)에 70% 집중
+    if (mealCount >= 3) {
+      carbDistribution = Array(mealCount).fill(0.1); // 나머지는 10%씩
+      carbDistribution[0] = 0.35; // 아침 (Pre-WO)
+      carbDistribution[1] = 0.35; // 점심 (Post-WO)
+      labels[0] = 'PRE-WO';
+      labels[1] = 'POST-WO';
+      labels[mealCount-1] = 'BEDTIME';
+    }
+  } else if (workoutTiming === 'AFTERNOON') {
+    // 오후 운동: 2번째(Pre), 3번째(Post) 식사에 집중
+    if (mealCount >= 4) {
+      carbDistribution = Array(mealCount).fill(0.1);
+      carbDistribution[1] = 0.35; // Pre
+      carbDistribution[2] = 0.35; // Post
+      labels[1] = 'PRE-WO';
+      labels[2] = 'POST-WO';
+      labels[mealCount-1] = 'BEDTIME';
+    } else if (mealCount === 3) {
+      carbDistribution = [0.2, 0.6, 0.2];
+      labels[1] = 'PRE/POST-WO';
+      labels[2] = 'BEDTIME';
+    }
+  } else if (workoutTiming === 'EVENING') {
+    // 저녁 운동: 3번째(Pre), 4번째(Post) 식사에 집중
+    if (mealCount >= 4) {
+      carbDistribution = Array(mealCount).fill(0.1);
+      carbDistribution[2] = 0.35; 
+      carbDistribution[3] = 0.35;
+      labels[2] = 'PRE-WO';
+      labels[3] = 'POST-WO';
+    }
   } else {
-    const timeParts = workoutTime?.split(':') || ["14", "00"];
-    const wHour = Number(timeParts[0] || 14);
-    const mealIndices = Array.from({ length: mealCount }, (_, i) => 8 + i * 4);
-    const diffs = mealIndices.map(time => Math.abs(time - wHour));
-    const sorted = [...Array(mealCount).keys()].sort((a, b) => diffs[a] - diffs[b]);
-    fuelIndices = sorted.slice(0, 2);
-    const fuelCarbsTotal = dailyTotal.carbs * 0.65;
-    const otherCarbsTotal = dailyTotal.carbs - fuelCarbsTotal;
-    fuelCPerMeal = Math.round(fuelCarbsTotal / 2);
-    otherCPerMeal = Math.round(otherCarbsTotal / Math.max(1, mealCount - 2));
+    // 휴식일 (REST): 균등 배분
+    labels[mealCount-1] = 'BEDTIME';
+  }
+
+  // 마지막 식사(BEDTIME)는 항상 탄수화물을 최소화하고 단백질/지방 위주로 재조정
+  if (workoutTiming !== 'EVENING' || mealCount > 4) {
+    const lastIdx = mealCount - 1;
+    if (carbDistribution[lastIdx] > 0.1) {
+       const excess = carbDistribution[lastIdx] - 0.1;
+       carbDistribution[lastIdx] = 0.1;
+       // 남은 탄수화물을 다른 식사에 골고루 배분
+       const othersCount = mealCount - 1;
+       for(let i=0; i<othersCount; i++) carbDistribution[i] += excess/othersCount;
+    }
+    if (!labels[lastIdx]) labels[lastIdx] = 'BEDTIME';
   }
 
   const cName = selectedIngredients?.carbs?.[0] || DEFAULT_BACKUP.carbs;
@@ -202,8 +246,7 @@ export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
   const fName = selectedIngredients?.fats?.[0] || DEFAULT_BACKUP.fats;
 
   return Array.from({ length: mealCount }, (_, i) => {
-    const isFuel = !isRestDay && fuelIndices.includes(i);
-    const targetC = isFuel ? fuelCPerMeal : (isRestDay ? Math.round(dailyTotal.carbs / mealCount) : otherCPerMeal);
+    const targetC = Math.round(dailyTotal.carbs * carbDistribution[i]);
     const targetP = pPerMeal;
     const targetF = fPerMeal;
 
@@ -220,7 +263,13 @@ export const generateOptimizedMealPlan = (userData: UserData): MealPlan[] => {
     const foods: FoodItem[] = [calculateWeight('carbs', targetC, cName), calculateWeight('protein', targetP, pName)];
     if (targetF > 2) foods.push(calculateWeight('fats', targetF, fName));
 
-    return { id: i, mealName: `${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} MEAL`, macros: { calories: Math.round(targetC * 4 + targetP * 4 + targetF * 9), protein: targetP, carbs: targetC, fat: targetF, isWorkoutFuel: isFuel }, foods };
+    return { 
+      id: i, 
+      mealName: `식사 ${i + 1}`, 
+      label: labels[i],
+      macros: { calories: Math.round(targetC * 4 + targetP * 4 + targetF * 9), protein: targetP, carbs: targetC, fat: targetF }, 
+      foods 
+    };
   });
 };
 
